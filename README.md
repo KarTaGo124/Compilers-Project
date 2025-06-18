@@ -1,1 +1,36 @@
-# Compilers-Project
+# Gramática de Kotlin (Subconjunto)
+
+-   Program ::= Stmt\*
+-   Stmt ::= VarDecl | FunDecl | Assign | Print | If | While | For | Return | Break | Continue | Block
+-   VarDecl ::= (var | val) id : Type [= Exp] [;]
+-   FunDecl ::= fun id ( [Params] ) [: Type] Block
+-   Assign ::= id (= | += | -= | \*= | /= | %=) Exp [;]
+-   Print ::= (print | println) ( Exp ) [;]
+-   If ::= if ( Exp ) Stmt [else Stmt]
+-   While ::= while ( Exp ) Stmt
+-   For ::= for ( id in Range ) Stmt
+-   Return ::= return [Exp] [;]
+-   Break ::= break [;]
+-   Continue ::= continue [;]
+-   Block ::= { Stmt\* }
+-   Params ::= Param (, Param)\*
+-   Param ::= id : Type
+-   Range ::= Exp (.. | until) Exp
+-   Exp ::= OrExp
+-   OrExp ::= AndExp (|| AndExp)\*
+-   AndExp ::= EqExp (&& EqExp)\*
+-   EqExp ::= RelExp ((== | !=) RelExp)\*
+-   RelExp ::= AddExp ((< | <= | > | >=) AddExp)\*
+-   AddExp ::= MulExp ((+ | -) MulExp)\*
+-   MulExp ::= UnExp ((_ | / | %) UnExp)_
+-   UnExp ::= (! | - | ++ | --) UnExp | PostExp
+-   PostExp ::= Primary (++ | --)\*
+-   Primary ::= id | Num | Decimal | String | Bool | ( Exp ) | Call
+-   Call ::= id ( [Args] )
+-   Args ::= Exp (, Exp)\*
+-   Type ::= Int | Float | String | Boolean
+-   Bool ::= true | false
+-   Num ::= [0-9]+
+-   Decimal ::= [0-9]+.[0-9]\*[f]
+-   String ::= "[^"]\*"
+-   id ::= [a-zA-Z\_][a-zA-Z0-9_]\*
