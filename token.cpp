@@ -143,12 +143,17 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
     case Token::NOT:
         outs << "TOKEN(NOT)";
         break;
-
     case Token::RANGE:
         outs << "TOKEN(RANGE)";
         break;
     case Token::UNTIL:
         outs << "TOKEN(UNTIL)";
+        break;
+    case Token::DOWNTO:
+        outs << "TOKEN(DOWNTO)";
+        break;
+    case Token::STEP:
+        outs << "TOKEN(STEP)";
         break;
 
     case Token::PRINT:
