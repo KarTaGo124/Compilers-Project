@@ -1,0 +1,75 @@
+// Test 2: Functions and Parameters
+// Tests function declarations, calls, parameters, and return statements
+
+// Function without parameters
+fun greet(): String {
+    return "Hello, World!"
+}
+
+// Function with single parameter  
+fun square(x: Int): Int {
+    return x * x;
+}
+
+// Function with multiple parameters (mixed semicolon usage)
+fun add(a: Int, b: Int): Int {
+    return a + b
+}
+
+fun multiply(x: Int, y: Int, z: Int): Int {
+    val result = x * y * z;
+    return result
+}
+
+// Function calls in expressions
+fun main() {
+    print(greet())
+    
+    val num = 5;
+    print(square(num))
+    
+    val sum = add(10, 20)
+    print(sum);
+    
+    val product = multiply(2, 3, 4)
+    print(product)
+    
+    // Nested function calls
+    print(add(square(3), multiply(2, 2, 2)))
+    
+    // Function calls in control structures
+    if (square(4) > 10) {
+        print("Square of 4 is greater than 10");
+    }
+    
+    val i = 0
+    while (i < add(2, 1)) {
+        print(i)
+        i = i + 1;
+    }
+    
+    for (j in 1..square(2)) {
+        print(j);
+    }
+}
+
+// Function with complex expressions
+fun calculate(base: Int, exponent: Int): Int {
+    val result = base
+    var counter = 1;
+    
+    while (counter < exponent) {
+        result = result * base
+        counter = counter + 1;
+    }
+    
+    return result
+}
+
+// Function using other functions
+fun mathDemo(): Unit {
+    val a = 3
+    val b = 4;
+    val hypotenuse = add(square(a), square(b))
+    print(hypotenuse)
+}

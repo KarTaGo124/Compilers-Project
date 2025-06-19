@@ -3,9 +3,6 @@
 
 using namespace std;
 
-/**
- * Token constructors
- */
 Token::Token(Type type) : type(type)
 {
     text = "";
@@ -21,15 +18,11 @@ Token::Token(Type type, const string &source, int first, int last) : type(type)
     text = source.substr(first, last);
 }
 
-/**
- * Output operator for Token objects
- * Provides readable string representation of tokens
- */
 std::ostream &operator<<(std::ostream &outs, const Token &tok)
 {
     switch (tok.type)
     {
-    // End of file and keywords
+
     case Token::END:
         outs << "TOKEN(END)";
         break;
@@ -43,7 +36,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(COLON)";
         break;
 
-    // Arithmetic operators
     case Token::PLUS:
         outs << "TOKEN(PLUS)";
         break;
@@ -60,7 +52,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(MOD)";
         break;
 
-    // Literals
     case Token::NUM:
         outs << "TOKEN(NUM)";
         break;
@@ -74,7 +65,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(ERR)";
         break;
 
-    // Assignment operators
     case Token::PLUS_ASSIGN:
         outs << "TOKEN(PLUS_ASSIGN)";
         break;
@@ -91,7 +81,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(MOD_ASSIGN)";
         break;
 
-    // Increment/Decrement operators
     case Token::INCREMENT:
         outs << "TOKEN(INCREMENT)";
         break;
@@ -99,7 +88,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(DECREMENT)";
         break;
 
-    // Delimiters
     case Token::LEFT_PAREN:
         outs << "TOKEN(LEFT_PAREN)";
         break;
@@ -113,7 +101,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(RIGHT_BRACE)";
         break;
 
-    // Identifiers and assignment
     case Token::ID:
         outs << "TOKEN(ID)";
         break;
@@ -121,7 +108,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(ASSIGN)";
         break;
 
-    // Punctuation
     case Token::SEMICOLON:
         outs << "TOKEN(SEMICOLON)";
         break;
@@ -129,7 +115,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(COMMA)";
         break;
 
-    // Comparison operators
     case Token::LT:
         outs << "TOKEN(LT)";
         break;
@@ -149,7 +134,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(NE)";
         break;
 
-    // Logical operators
     case Token::AND:
         outs << "TOKEN(AND)";
         break;
@@ -160,7 +144,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(NOT)";
         break;
 
-    // Range operators
     case Token::RANGE:
         outs << "TOKEN(RANGE)";
         break;
@@ -168,7 +151,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(UNTIL)";
         break;
 
-    // I/O functions
     case Token::PRINT:
         outs << "TOKEN(PRINT)";
         break;
@@ -176,7 +158,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(PRINTLN)";
         break;
 
-    // Control flow keywords
     case Token::IF:
         outs << "TOKEN(IF)";
         break;
@@ -184,7 +165,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(ELSE)";
         break;
 
-    // Loop keywords
     case Token::WHILE:
         outs << "TOKEN(WHILE)";
         break;
@@ -198,7 +178,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(IN)";
         break;
 
-    // Function keywords
     case Token::FUN:
         outs << "TOKEN(FUN)";
         break;
@@ -206,7 +185,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(RETURN)";
         break;
 
-    // Control keywords
     case Token::BREAK:
         outs << "TOKEN(BREAK)";
         break;
@@ -214,7 +192,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(CONTINUE)";
         break;
 
-    // Boolean literals
     case Token::FALSE:
         outs << "TOKEN(FALSE)";
         break;
@@ -222,12 +199,10 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
         outs << "TOKEN(TRUE)";
         break;
 
-    // Null literal
     case Token::NULL_LITERAL:
         outs << "TOKEN(NULL_LITERAL)";
         break;
 
-    // Type keywords
     case Token::INT:
         outs << "TOKEN(INT)";
         break;
@@ -240,6 +215,9 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
     case Token::BOOLEAN:
         outs << "TOKEN(BOOLEAN)";
         break;
+    case Token::UNIT:
+        outs << "TOKEN(UNIT)";
+        break;
 
     default:
         outs << "TOKEN(UNKNOWN)";
@@ -248,9 +226,6 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
     return outs;
 }
 
-/**
- * Output operator for Token pointers
- */
 std::ostream &operator<<(std::ostream &outs, const Token *tok)
 {
     return outs << *tok;

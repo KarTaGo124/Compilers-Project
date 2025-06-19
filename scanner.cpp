@@ -5,40 +5,26 @@
 
 using namespace std;
 
-/**
- * Scanner constructor
- * Initializes the scanner with input source code
- */
 Scanner::Scanner(const char *s) : input(s), first(0), current(0) {}
 
-/**
- * Helper function to check if character is whitespace
- */
 bool is_white_space(char c)
 {
     return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-/**
- * Main tokenization method
- * Returns the next token from the input stream
- */
 Token *Scanner::nextToken()
 {
     Token *token;
 
-    // Skip whitespace
     while (current < input.length() && is_white_space(input[current]))
         current++;
 
-    // Check for end of file
     if (current >= input.length())
         return new Token(Token::END);
 
     char c = input[current];
     first = current;
 
-    // Process numeric literals
     if (isdigit(c))
     {
         current++;
@@ -46,14 +32,12 @@ Token *Scanner::nextToken()
         bool is_int = false;
         bool has_f = false;
 
-        // Parse integer part
         while (current < input.length() && isdigit(input[current]))
             current++;
 
-        // Check for decimal point
         if (current < input.length() && input[current] == '.')
         {
-            // Check if it's a range operator (..)
+
             if (current + 1 < input.length() && input[current + 1] == '.')
             {
                 is_int = true;
@@ -62,7 +46,7 @@ Token *Scanner::nextToken()
             {
                 is_float = true;
                 current++;
-                // Parse fractional part
+
                 while (current < input.length() && isdigit(input[current]))
                     current++;
             }
@@ -70,7 +54,7 @@ Token *Scanner::nextToken()
         else
         {
             is_int = true;
-        } // Check for 'f' suffix in float literals
+        }
         if (is_float && current < input.length() && input[current] == 'f')
         {
             has_f = true;
@@ -80,10 +64,10 @@ Token *Scanner::nextToken()
         }
         else if (is_float)
         {
-            // Float without 'f' suffix - generate error
+
             token = new Token(Token::ERR, input, first, current - first);
         }
-        // Integer with 'f' suffix - treat as float
+
         else if (is_int && current < input.length() && input[current] == 'f')
         {
             has_f = true;
@@ -93,17 +77,17 @@ Token *Scanner::nextToken()
         }
         else
         {
-            // Regular integer
+
             token = new Token(Token::NUM, input, first, current - first);
         }
     }
-    // Process identifiers and keywords
+
     else if (isalpha(c))
     {
         current++;
         while (current < input.length() && isalnum(input[current]))
             current++;
-        string word = input.substr(first, current - first); // Map keywords to tokens
+        string word = input.substr(first, current - first);
         if (word == "Int")
         {
             token = new Token(Token::INT, word, 0, word.length());
@@ -119,6 +103,10 @@ Token *Scanner::nextToken()
         else if (word == "Boolean")
         {
             token = new Token(Token::BOOLEAN, word, 0, word.length());
+        }
+        else if (word == "Unit")
+        {
+            token = new Token(Token::UNIT, word, 0, word.length());
         }
         else if (word == "print")
         {
@@ -194,10 +182,10 @@ Token *Scanner::nextToken()
         }
         else
         {
-            // Regular identifier
+
             token = new Token(Token::ID, word, 0, word.length());
         }
-    } // Process operators and delimiters
+    }
     else if (strchr(":+-*/%()=;,<>!&|{}.", c))
     {
         switch (c)
@@ -372,19 +360,18 @@ Token *Scanner::nextToken()
         }
         current++;
     }
-    // Process string literals
+
     else if (c == '"')
     {
-        current++; // Skip opening quote
+        current++;
         size_t start = current;
 
-        // Find closing quote
         while (current < input.length() && input[current] != '"')
         {
-            // Handle escape sequences
+
             if (input[current] == '\\' && current + 1 < input.length())
             {
-                current += 2; // Skip escape sequence
+                current += 2;
             }
             else
             {
@@ -394,43 +381,31 @@ Token *Scanner::nextToken()
 
         if (current >= input.length())
         {
-            // Unterminated string
+
             token = new Token(Token::ERR, input, first, current - first);
         }
         else
         {
-            // Create string token (without quotes)
             token = new Token(Token::STRING, input, start, current - start);
-            current++; // Skip closing quote
+            current++;
         }
     }
     else
     {
-        // Unknown character - generate error token
         token = new Token(Token::ERR, c);
         current++;
     }
     return token;
 }
 
-/**
- * Reset scanner to beginning of input
- */
 void Scanner::reset()
 {
     first = 0;
     current = 0;
 }
 
-/**
- * Scanner destructor
- */
 Scanner::~Scanner() {}
 
-/**
- * Test function for the scanner
- * Tokenizes entire input and prints all tokens
- */
 void test_scanner(Scanner *scanner)
 {
     Token *current;
