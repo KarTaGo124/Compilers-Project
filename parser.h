@@ -24,11 +24,11 @@ private:
     Exp *parseUnExp();
     Exp *parsePostExp();
     Exp *parsePrimary();
-
     Stm *parseStatement();
     Stm *parseVarDeclaration();
     Stm *parseFunDeclaration();
     Stm *parseAssignment();
+    Stm *parseIncrementDecrement();
     Stm *parsePrintStatement();
     Stm *parseIfStatement();
     Stm *parseWhileStatement();
