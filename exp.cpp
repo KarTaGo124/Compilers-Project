@@ -68,11 +68,14 @@ ForStatement::~ForStatement()
     delete stmt;
 }
 
-RangeExp::RangeExp(Exp *start, Exp *end, bool until) : start(start), end(end), until(until) {}
+RangeExp::RangeExp(Exp *start, Exp *end, bool until, bool downTo, Exp *step)
+    : start(start), end(end), until(until), downTo(downTo), step(step) {}
 RangeExp::~RangeExp()
 {
     delete start;
     delete end;
+    if (step)
+        delete step;
 }
 
 StringExp::StringExp(const string &v) : value(v) {}

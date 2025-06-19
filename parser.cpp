@@ -618,23 +618,38 @@ Exp *Parser::parseRangeExpression()
     Exp *start = parseExpression();
 
     bool isUntil = false;
+    bool isDownTo = false;
+
     if (match(Token::RANGE))
     {
         isUntil = false;
+        isDownTo = false;
     }
     else if (match(Token::UNTIL))
     {
         isUntil = true;
+        isDownTo = false;
+    }
+    else if (match(Token::DOWNTO))
+    {
+        isUntil = false;
+        isDownTo = true;
     }
     else
     {
-        cout << "Error: se esperaba '..' o 'until' en la expresión de rango." << endl;
+        cout << "Error: se esperaba '..', 'until' o 'downTo' en la expresión de rango." << endl;
         std::exit(1);
     }
 
     Exp *end = parseExpression();
 
-    return new RangeExp(start, end, isUntil);
+    Exp *step = nullptr;
+    if (match(Token::STEP))
+    {
+        step = parseExpression();
+    }
+
+    return new RangeExp(start, end, isUntil, isDownTo, step);
 }
 
 Stm *Parser::parseAssignment()
