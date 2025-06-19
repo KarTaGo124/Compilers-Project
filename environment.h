@@ -14,6 +14,7 @@ private:
     vector<unordered_map<string, int>> int_levels;
     vector<unordered_map<string, float>> float_levels;
     vector<unordered_map<string, string>> string_levels;
+    vector<unordered_map<string, bool>> bool_levels;
     vector<unordered_map<string, string>> type_levels;
 
     int search_rib(string var, string type)
@@ -54,6 +55,18 @@ private:
                 idx--;
             }
         }
+        else if (type == "Boolean")
+        {
+            int idx = bool_levels.size() - 1;
+            while (idx >= 0)
+            {
+                if (bool_levels[idx].find(var) != bool_levels[idx].end())
+                {
+                    return idx;
+                }
+                idx--;
+            }
+        }
         return -1;
     }
 
@@ -82,7 +95,6 @@ public:
             type_levels.back()[var] = "Float";
         }
     }
-
     void add_var(string var, string value, string type)
     {
         if (type == "String")
@@ -92,6 +104,14 @@ public:
         }
     }
 
+    void add_var(string var, bool value, string type)
+    {
+        if (type == "Boolean")
+        {
+            bool_levels.back()[var] = value;
+            type_levels.back()[var] = "Boolean";
+        }
+    }
     void add_var(string var, string type)
     {
         if (type == "Int")
@@ -103,6 +123,11 @@ public:
         {
             float_levels.back()[var] = 0.0f;
             type_levels.back()[var] = "Float";
+        }
+        else if (type == "Boolean")
+        {
+            bool_levels.back()[var] = false;
+            type_levels.back()[var] = "Boolean";
         }
     }
 
@@ -131,13 +156,21 @@ public:
             float_levels[idx][var] = value;
         }
     }
-
     void update(string var, string value)
     {
         int idx = search_rib(var, "String");
         if (idx != -1)
         {
             string_levels[idx][var] = value;
+        }
+    }
+
+    void update(string var, bool value)
+    {
+        int idx = search_rib(var, "Boolean");
+        if (idx != -1)
+        {
+            bool_levels[idx][var] = value;
         }
     }
 
@@ -164,13 +197,20 @@ public:
             return static_cast<float>(int_levels[idxi][var]);
         return 0.0f;
     }
-
     string lookup_string(string var)
     {
         int idx = search_rib(var, "String");
         if (idx != -1)
             return string_levels[idx][var];
         return "";
+    }
+
+    bool lookup_bool(string var)
+    {
+        int idx = search_rib(var, "Boolean");
+        if (idx != -1)
+            return bool_levels[idx][var];
+        return false;
     }
 
     string lookup_type(string var)
@@ -200,12 +240,12 @@ public:
         }
         return false;
     }
-
     void add_level()
     {
         int_levels.push_back(unordered_map<string, int>());
         float_levels.push_back(unordered_map<string, float>());
         string_levels.push_back(unordered_map<string, string>());
+        bool_levels.push_back(unordered_map<string, bool>());
         type_levels.push_back(unordered_map<string, string>());
     }
     void remove_level()
@@ -213,6 +253,7 @@ public:
         int_levels.pop_back();
         float_levels.pop_back();
         string_levels.pop_back();
+        bool_levels.pop_back();
         type_levels.pop_back();
     }
 
