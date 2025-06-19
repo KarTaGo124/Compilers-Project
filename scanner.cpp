@@ -179,6 +179,14 @@ Token *Scanner::nextToken()
         {
             token = new Token(Token::UNTIL, word, 0, word.length());
         }
+        else if (word == "downTo")
+        {
+            token = new Token(Token::DOWNTO, word, 0, word.length());
+        }
+        else if (word == "step")
+        {
+            token = new Token(Token::STEP, word, 0, word.length());
+        }
         else
         {
 

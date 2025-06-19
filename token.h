@@ -45,6 +45,8 @@ public:
         NOT,
         RANGE,
         UNTIL,
+        DOWNTO,
+        STEP,
         PRINT,
         PRINTLN,
         IF,

@@ -15,7 +15,7 @@
 -   Block ::= { Stmt\* }
 -   Params ::= Param (, Param)\*
 -   Param ::= id : Type
--   Range ::= Exp (.. | until) Exp
+-   Range ::= Exp (.. | until | downTo) Exp [step Exp]
 -   Exp ::= OrExp
 -   OrExp ::= AndExp (|| AndExp)\*
 -   AndExp ::= EqExp (&& EqExp)\*

@@ -85,8 +85,10 @@ class RangeExp : public Exp
 public:
     Exp *start;
     Exp *end;
+    Exp *step;
     bool until;
-    RangeExp(Exp *start, Exp *end, bool until = false);
+    bool downTo;
+    RangeExp(Exp *start, Exp *end, bool until = false, bool downTo = false, Exp *step = nullptr);
     int accept(Visitor *visitor);
     ~RangeExp();
 };
