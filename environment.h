@@ -122,6 +122,7 @@ public:
             }
         }
     }
+
     void update(string var, float value)
     {
         int idx = search_rib(var, "Float");
@@ -130,6 +131,7 @@ public:
             float_levels[idx][var] = value;
         }
     }
+
     void update(string var, string value)
     {
         int idx = search_rib(var, "String");
@@ -138,6 +140,7 @@ public:
             string_levels[idx][var] = value;
         }
     }
+
     int lookup(string var)
     {
         int idx = search_rib(var, "Int");
@@ -149,6 +152,7 @@ public:
             return static_cast<int>(float_levels[idxf][var]);
         return 0;
     }
+
     float lookup_float(string var)
     {
         int idx = search_rib(var, "Float");
@@ -182,6 +186,7 @@ public:
         }
         return "";
     }
+
     bool check(string var)
     {
         int n = type_levels.size() - 1;
