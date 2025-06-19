@@ -81,11 +81,10 @@ Token *Scanner::nextToken()
             token = new Token(Token::NUM, input, first, current - first);
         }
     }
-
-    else if (isalpha(c))
+    else if (isalpha(c) || c == '_')
     {
         current++;
-        while (current < input.length() && isalnum(input[current]))
+        while (current < input.length() && (isalnum(input[current]) || input[current] == '_'))
             current++;
         string word = input.substr(first, current - first);
         if (word == "Int")

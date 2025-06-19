@@ -147,7 +147,9 @@ public:
         MINUS_ASSIGN_OP,
         MUL_ASSIGN_OP,
         DIV_ASSIGN_OP,
-        MOD_ASSIGN_OP
+        MOD_ASSIGN_OP,
+        INCREMENT_OP,
+        DECREMENT_OP
     };
     string id;
     Exp *rhs;

@@ -252,10 +252,13 @@ Stm *Parser::parseStatement()
     {
         return parseBlock();
     }
-
     else if (check(Token::ID))
     {
         return parseAssignment();
+    }
+    else if (check(Token::INCREMENT) || check(Token::DECREMENT))
+    {
+        return parseIncrementDecrement();
     }
     else
     {
@@ -880,4 +883,33 @@ list<Exp *> Parser::parseArgumentList()
     }
 
     return args;
+}
+
+Stm *Parser::parseIncrementDecrement()
+{
+    AssignStatement::AssignOp op;
+    if (match(Token::INCREMENT))
+    {
+        op = AssignStatement::INCREMENT_OP;
+    }
+    else if (match(Token::DECREMENT))
+    {
+        op = AssignStatement::DECREMENT_OP;
+    }
+    else
+    {
+        cout << "Error: se esperaba '++' o '--'" << endl;
+        std::exit(1);
+    }
+
+    if (!match(Token::ID))
+    {
+        cout << "Error: se esperaba un identificador después de '++' o '--'" << endl;
+        std::exit(1);
+    }
+    string id = previous->text;
+
+    match(Token::SEMICOLON);
+
+    return new AssignStatement(id, nullptr, op);
 }
