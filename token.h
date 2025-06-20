@@ -61,6 +61,7 @@ public:
         RETURN,
         BREAK,
         CONTINUE,
+        RUN,
         FALSE,
         TRUE,
         NULL_LITERAL,
