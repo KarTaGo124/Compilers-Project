@@ -111,7 +111,6 @@ Stm *Parser::parseVarDeclaration()
     {
         value = parseExpression();
     }
-
     match(Token::SEMICOLON);
 
     VarDec *vd = new VarDec(id, type, value, isVal);
@@ -143,7 +142,12 @@ StatementList *Parser::parseStatementList()
     Stm *stmt = parseStatement();
     sl->add(stmt);
 
-    while (!isAtEnd() && (check(Token::SEMICOLON) || check(Token::ID) || check(Token::PRINT) || check(Token::PRINTLN)))
+    while (!isAtEnd() && !check(Token::RIGHT_BRACE) &&
+           (check(Token::SEMICOLON) || check(Token::ID) || check(Token::PRINT) || check(Token::PRINTLN) ||
+            check(Token::VAR) || check(Token::VAL) || check(Token::IF) || check(Token::WHILE) ||
+            check(Token::DO) || check(Token::FOR) || check(Token::RETURN) || check(Token::BREAK) ||
+            check(Token::CONTINUE) || check(Token::RUN) || check(Token::LEFT_BRACE) ||
+            check(Token::INCREMENT) || check(Token::DECREMENT)))
     {
         if (match(Token::SEMICOLON))
         {
@@ -180,8 +184,41 @@ Block *Parser::parseBlock()
         cout << "Error: se esperaba '}' al final del bloque." << endl;
         std::exit(1);
     }
-
     return new Block(sl);
+}
+
+RunBlock *Parser::parseRunBlock()
+{
+    if (!match(Token::RUN))
+    {
+        cout << "Error: se esperaba 'run' para iniciar un bloque run." << endl;
+        std::exit(1);
+    }
+
+    if (!match(Token::LEFT_BRACE))
+    {
+        cout << "Error: se esperaba '{' después de 'run'." << endl;
+        std::exit(1);
+    }
+
+    StatementList *sl = new StatementList();
+
+    while (!check(Token::RIGHT_BRACE) && !isAtEnd())
+    {
+        Stm *stmt = parseStatement();
+        if (stmt != nullptr)
+        {
+            sl->add(stmt);
+        }
+        match(Token::SEMICOLON);
+    }
+    if (!match(Token::RIGHT_BRACE))
+    {
+        cout << "Error: se esperaba '}' al final del bloque run." << endl;
+        std::exit(1);
+    }
+
+    return new RunBlock(sl);
 }
 
 Program *Parser::parseProgram()
@@ -190,7 +227,7 @@ Program *Parser::parseProgram()
 
     while (!isAtEnd())
     {
-        Stm *stmt = parseStatement();
+        Stm *stmt = parseTopLevelStatement();
         if (stmt != nullptr)
         {
             statements->add(stmt);
@@ -229,6 +266,11 @@ Stm *Parser::parseStatement()
         return parseWhileStatement();
     }
 
+    else if (check(Token::DO))
+    {
+        return parseDoWhileStatement();
+    }
+
     else if (check(Token::FOR))
     {
         return parseForStatement();
@@ -243,10 +285,13 @@ Stm *Parser::parseStatement()
     {
         return parseBreakStatement();
     }
-
     else if (check(Token::CONTINUE))
     {
         return parseContinueStatement();
+    }
+    else if (check(Token::RUN))
+    {
+        return parseRunBlock();
     }
     else if (check(Token::LEFT_BRACE))
     {
@@ -319,6 +364,38 @@ Stm *Parser::parseWhileStatement()
     Stm *stmt = parseStatement();
 
     return new WhileStatement(condition, stmt);
+}
+
+Stm *Parser::parseDoWhileStatement()
+{
+    if (!match(Token::DO))
+        return nullptr;
+
+    Stm *stmt = parseStatement();
+
+    if (!match(Token::WHILE))
+    {
+        cout << "Error: se esperaba 'while' después del cuerpo do" << endl;
+        std::exit(1);
+    }
+
+    if (!match(Token::LEFT_PAREN))
+    {
+        cout << "Error: se esperaba '(' después de 'while'" << endl;
+        std::exit(1);
+    }
+
+    Exp *condition = parseExpression();
+
+    if (!match(Token::RIGHT_PAREN))
+    {
+        cout << "Error: se esperaba ')' después de la condición del do-while" << endl;
+        std::exit(1);
+    }
+
+    match(Token::SEMICOLON);
+
+    return new DoWhileStatement(stmt, condition);
 }
 
 Stm *Parser::parseForStatement()
@@ -501,13 +578,15 @@ Exp *Parser::parseMulExp()
 
 Exp *Parser::parseUnExp()
 {
-    if (check(Token::NOT) || check(Token::MINUS) || check(Token::INCREMENT) || check(Token::DECREMENT))
+    if (check(Token::NOT) || check(Token::MINUS) || check(Token::PLUS) || check(Token::INCREMENT) || check(Token::DECREMENT))
     {
         UnaryExp::UnaryOp op;
         if (match(Token::NOT))
             op = UnaryExp::NOT_OP;
         else if (match(Token::MINUS))
             op = UnaryExp::NEG_OP;
+        else if (match(Token::PLUS))
+            op = UnaryExp::POS_OP;
         else if (match(Token::INCREMENT))
             op = UnaryExp::PRE_INC_OP;
         else if (match(Token::DECREMENT))
@@ -524,7 +603,8 @@ Exp *Parser::parsePostExp()
 {
     Exp *expr = parsePrimary();
 
-    while (check(Token::INCREMENT) || check(Token::DECREMENT))
+    while ((check(Token::INCREMENT) || check(Token::DECREMENT)) &&
+           dynamic_cast<IdentifierExp *>(expr) != nullptr)
     {
         UnaryExp::UnaryOp op;
         if (match(Token::INCREMENT))
@@ -545,12 +625,12 @@ Exp *Parser::parsePrimary()
         int value = stoi(previous->text);
         return new NumberExp(value);
     }
-
     if (match(Token::DECIMAL))
     {
         float value = stof(previous->text);
         DecimalExp *decimalExp = new DecimalExp(value);
         decimalExp->has_f = previous->text.back() == 'f';
+        decimalExp->original_text = previous->text;
         return decimalExp;
     }
 
@@ -1009,5 +1089,23 @@ Stm *Parser::parseIDStatement()
         match(Token::SEMICOLON);
 
         return new AssignStatement(id, value, op);
+    }
+}
+
+Stm *Parser::parseTopLevelStatement()
+{
+    if (check(Token::VAR) || check(Token::VAL))
+    {
+        return parseVarDeclaration();
+    }
+    else if (check(Token::FUN))
+    {
+        return parseFunDeclaration();
+    }
+    else
+    {
+        cout << "Error: Solo se permiten declaraciones de variables (var/val) y funciones (fun) en el nivel superior del programa." << endl;
+        cout << "Declaración inválida encontrada: " << current->text << endl;
+        std::exit(1);
     }
 }

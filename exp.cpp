@@ -72,6 +72,13 @@ WhileStatement::~WhileStatement()
     delete stmt;
 }
 
+DoWhileStatement::DoWhileStatement(Stm *stmt, Exp *condition) : stmt(stmt), condition(condition) {}
+DoWhileStatement::~DoWhileStatement()
+{
+    delete stmt;
+    delete condition;
+}
+
 ForStatement::ForStatement(std::string id, Exp *range, Stm *stmt) : id(id), range(range), stmt(stmt) {}
 
 ForStatement::~ForStatement()
@@ -164,6 +171,12 @@ StatementList::~StatementList()
 
 Block::Block(StatementList *statements) : statements(statements) {}
 Block::~Block()
+{
+    delete statements;
+}
+
+RunBlock::RunBlock(StatementList *statements) : statements(statements) {}
+RunBlock::~RunBlock()
 {
     delete statements;
 }

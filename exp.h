@@ -57,6 +57,7 @@ class DecimalExp : public Exp
 {
 public:
     float value;
+    std::string original_text;
     DecimalExp(float v);
     int accept(Visitor *visitor);
     ~DecimalExp();
@@ -129,6 +130,7 @@ public:
     {
         NOT_OP,
         NEG_OP,
+        POS_OP,
         PRE_INC_OP,
         PRE_DEC_OP,
         POST_INC_OP,
@@ -198,6 +200,15 @@ public:
     Block(StatementList *statements);
     int accept(Visitor *visitor);
     ~Block();
+};
+
+class RunBlock : public Stm
+{
+public:
+    StatementList *statements;
+    RunBlock(StatementList *statements);
+    int accept(Visitor *visitor);
+    ~RunBlock();
 };
 
 class FunctionDecl : public Stm
@@ -297,6 +308,16 @@ public:
     WhileStatement(Exp *condition, Stm *stmt);
     int accept(Visitor *visitor);
     ~WhileStatement();
+};
+
+class DoWhileStatement : public Stm
+{
+public:
+    Stm *stmt;
+    Exp *condition;
+    DoWhileStatement(Stm *stmt, Exp *condition);
+    int accept(Visitor *visitor);
+    ~DoWhileStatement();
 };
 
 class ForStatement : public Stm
