@@ -45,6 +45,18 @@ PrintStatement::~PrintStatement()
     delete e;
 }
 
+ExpressionStatement::ExpressionStatement(Exp *expr) : expr(expr) {}
+ExpressionStatement::~ExpressionStatement()
+{
+    delete expr;
+}
+
+int ExpressionStatement::accept(Visitor *visitor)
+{
+    visitor->visit(this);
+    return 0;
+}
+
 IfStatement::IfStatement(Exp *condition, Stm *thenStmt, Stm *elseStmt) : condition(condition), thenStmt(thenStmt), elseStmt(elseStmt) {}
 IfStatement::~IfStatement()
 {
@@ -80,6 +92,13 @@ RangeExp::~RangeExp()
 
 StringExp::StringExp(const string &v) : value(v) {}
 StringExp::~StringExp() {}
+
+ParenthesizedExp::ParenthesizedExp(Exp *expr) : expr(expr) {}
+int ParenthesizedExp::accept(Visitor *visitor)
+{
+    return visitor->visit(this);
+}
+ParenthesizedExp::~ParenthesizedExp() { delete expr; }
 
 FunctionCallExp::FunctionCallExp(const string &name) : name(name) {}
 void FunctionCallExp::addArg(Exp *arg)

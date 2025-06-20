@@ -102,6 +102,15 @@ public:
     ~StringExp();
 };
 
+class ParenthesizedExp : public Exp
+{
+public:
+    Exp *expr;
+    ParenthesizedExp(Exp *expr);
+    int accept(Visitor *visitor);
+    ~ParenthesizedExp();
+};
+
 class FunctionCallExp : public Exp
 {
 public:
@@ -151,7 +160,9 @@ public:
         DIV_ASSIGN_OP,
         MOD_ASSIGN_OP,
         INCREMENT_OP,
-        DECREMENT_OP
+        DECREMENT_OP,
+        POST_INCREMENT_OP,
+        POST_DECREMENT_OP
     };
     string id;
     Exp *rhs;
@@ -169,6 +180,15 @@ public:
     PrintStatement(Exp *e, bool newline);
     int accept(Visitor *visitor);
     ~PrintStatement();
+};
+
+class ExpressionStatement : public Stm
+{
+public:
+    Exp *expr;
+    ExpressionStatement(Exp *expr);
+    int accept(Visitor *visitor);
+    ~ExpressionStatement();
 };
 
 class Block : public Stm

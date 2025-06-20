@@ -254,7 +254,7 @@ Stm *Parser::parseStatement()
     }
     else if (check(Token::ID))
     {
-        return parseAssignment();
+        return parseIDStatement();
     }
     else if (check(Token::INCREMENT) || check(Token::DECREMENT))
     {
@@ -567,7 +567,6 @@ Exp *Parser::parsePrimary()
     {
         return new BoolExp(false);
     }
-
     if (match(Token::LEFT_PAREN))
     {
         Exp *expr = parseExpression();
@@ -576,7 +575,7 @@ Exp *Parser::parsePrimary()
             cout << "Error: se esperaba ')' después de la expresión." << endl;
             std::exit(1);
         }
-        return expr;
+        return new ParenthesizedExp(expr);
     }
 
     if (match(Token::ID))
@@ -927,4 +926,88 @@ Stm *Parser::parseIncrementDecrement()
     match(Token::SEMICOLON);
 
     return new AssignStatement(id, nullptr, op);
+}
+
+Stm *Parser::parseIDStatement()
+{
+    if (!match(Token::ID))
+    {
+        cout << "Error: se esperaba un identificador." << endl;
+        std::exit(1);
+    }
+    string id = previous->text;
+
+    if (check(Token::LEFT_PAREN))
+    {
+        match(Token::LEFT_PAREN);
+        list<Exp *> args;
+        if (!check(Token::RIGHT_PAREN))
+        {
+            args = parseArgumentList();
+        }
+        if (!match(Token::RIGHT_PAREN))
+        {
+            cout << "Error: se esperaba ')' después de los argumentos" << endl;
+            std::exit(1);
+        }
+        match(Token::SEMICOLON);
+
+        FunctionCallExp *funcCall = new FunctionCallExp(id);
+        for (Exp *arg : args)
+        {
+            funcCall->addArg(arg);
+        }
+
+        return new ExpressionStatement(funcCall);
+    }
+    else if (check(Token::INCREMENT))
+    {
+        match(Token::INCREMENT);
+        match(Token::SEMICOLON);
+        return new AssignStatement(id, nullptr, AssignStatement::POST_INCREMENT_OP);
+    }
+    else if (check(Token::DECREMENT))
+    {
+        match(Token::DECREMENT);
+        match(Token::SEMICOLON);
+        return new AssignStatement(id, nullptr, AssignStatement::POST_DECREMENT_OP);
+    }
+    else
+    {
+        AssignStatement::AssignOp op = AssignStatement::ASSIGN_OP;
+        if (match(Token::ASSIGN))
+        {
+            op = AssignStatement::ASSIGN_OP;
+        }
+        else if (match(Token::PLUS_ASSIGN))
+        {
+            op = AssignStatement::PLUS_ASSIGN_OP;
+        }
+        else if (match(Token::MINUS_ASSIGN))
+        {
+            op = AssignStatement::MINUS_ASSIGN_OP;
+        }
+        else if (match(Token::MUL_ASSIGN))
+        {
+            op = AssignStatement::MUL_ASSIGN_OP;
+        }
+        else if (match(Token::DIV_ASSIGN))
+        {
+            op = AssignStatement::DIV_ASSIGN_OP;
+        }
+        else if (match(Token::MOD_ASSIGN))
+        {
+            op = AssignStatement::MOD_ASSIGN_OP;
+        }
+        else
+        {
+            cout << "Error: se esperaba un operador de asignación." << endl;
+            std::exit(1);
+        }
+
+        Exp *value = parseExpression();
+        match(Token::SEMICOLON);
+
+        return new AssignStatement(id, value, op);
+    }
 }

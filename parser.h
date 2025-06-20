@@ -28,6 +28,7 @@ private:
     Stm *parseVarDeclaration();
     Stm *parseFunDeclaration();
     Stm *parseAssignment();
+    Stm *parseIDStatement();
     Stm *parseIncrementDecrement();
     Stm *parsePrintStatement();
     Stm *parseIfStatement();
