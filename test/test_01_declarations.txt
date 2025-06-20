@@ -1,0 +1,34 @@
+// Test 1: Declaraciones básicas de variables y funciones
+var globalInt: Int = 42
+val globalFloat: Float = 3.14159f
+var globalString: String = "Global Variable"
+val globalBoolean: Boolean = true
+
+fun voidFunction(): Unit {
+    print("Void function executed")
+}
+
+fun intFunction(x: Int, y: Int): Int {
+    return x + y * 2 - 1
+}
+
+fun floatFunction(a: Float, b: Float): Float {
+    return a / b + 1.5f
+}
+
+fun stringFunction(s1: String, s2: String): String {
+    return s1 + " concatenated with " + s2
+}
+
+fun booleanFunction(flag: Boolean): Boolean {
+    return !flag && true || false
+}
+
+fun main(): Unit {
+    var localInt: Int = 100
+    var localFloat: Float = 2.71828f
+    var localString: String = "Local String"
+    var localBoolean: Boolean = false
+    
+    println("Basic declarations test passed!")
+}
