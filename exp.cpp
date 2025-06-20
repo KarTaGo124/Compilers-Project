@@ -45,6 +45,18 @@ PrintStatement::~PrintStatement()
     delete e;
 }
 
+ExpressionStatement::ExpressionStatement(Exp *expr) : expr(expr) {}
+ExpressionStatement::~ExpressionStatement()
+{
+    delete expr;
+}
+
+int ExpressionStatement::accept(Visitor *visitor)
+{
+    visitor->visit(this);
+    return 0;
+}
+
 IfStatement::IfStatement(Exp *condition, Stm *thenStmt, Stm *elseStmt) : condition(condition), thenStmt(thenStmt), elseStmt(elseStmt) {}
 IfStatement::~IfStatement()
 {
@@ -58,6 +70,13 @@ WhileStatement::~WhileStatement()
 {
     delete condition;
     delete stmt;
+}
+
+DoWhileStatement::DoWhileStatement(Stm *stmt, Exp *condition) : stmt(stmt), condition(condition) {}
+DoWhileStatement::~DoWhileStatement()
+{
+    delete stmt;
+    delete condition;
 }
 
 ForStatement::ForStatement(std::string id, Exp *range, Stm *stmt) : id(id), range(range), stmt(stmt) {}
@@ -80,6 +99,13 @@ RangeExp::~RangeExp()
 
 StringExp::StringExp(const string &v) : value(v) {}
 StringExp::~StringExp() {}
+
+ParenthesizedExp::ParenthesizedExp(Exp *expr) : expr(expr) {}
+int ParenthesizedExp::accept(Visitor *visitor)
+{
+    return visitor->visit(this);
+}
+ParenthesizedExp::~ParenthesizedExp() { delete expr; }
 
 FunctionCallExp::FunctionCallExp(const string &name) : name(name) {}
 void FunctionCallExp::addArg(Exp *arg)
@@ -145,6 +171,12 @@ StatementList::~StatementList()
 
 Block::Block(StatementList *statements) : statements(statements) {}
 Block::~Block()
+{
+    delete statements;
+}
+
+RunBlock::RunBlock(StatementList *statements) : statements(statements) {}
+RunBlock::~RunBlock()
 {
     delete statements;
 }

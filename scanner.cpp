@@ -187,6 +187,10 @@ Token *Scanner::nextToken()
         {
             token = new Token(Token::STEP, word, 0, word.length());
         }
+        else if (word == "run")
+        {
+            token = new Token(Token::RUN, word, 0, word.length());
+        }
         else
         {
 
@@ -241,7 +245,30 @@ Token *Scanner::nextToken()
             }
             break;
         case '/':
-            if (current + 1 < input.length() && input[current + 1] == '=')
+            if (current + 1 < input.length() && input[current + 1] == '/')
+            {
+                current += 2;
+                while (current < input.length() && input[current] != '\n')
+                    current++;
+                if (current < input.length() && input[current] == '\n')
+                    current++;
+                return nextToken();
+            }
+            else if (current + 1 < input.length() && input[current + 1] == '*')
+            {
+                current += 2;
+                while (current + 1 < input.length())
+                {
+                    if (input[current] == '*' && input[current + 1] == '/')
+                    {
+                        current += 2;
+                        break;
+                    }
+                    current++;
+                }
+                return nextToken();
+            }
+            else if (current + 1 < input.length() && input[current + 1] == '=')
             {
                 token = new Token(Token::DIV_ASSIGN, "/=", 0, 2);
                 current++;

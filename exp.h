@@ -57,6 +57,7 @@ class DecimalExp : public Exp
 {
 public:
     float value;
+    std::string original_text;
     DecimalExp(float v);
     int accept(Visitor *visitor);
     ~DecimalExp();
@@ -102,6 +103,15 @@ public:
     ~StringExp();
 };
 
+class ParenthesizedExp : public Exp
+{
+public:
+    Exp *expr;
+    ParenthesizedExp(Exp *expr);
+    int accept(Visitor *visitor);
+    ~ParenthesizedExp();
+};
+
 class FunctionCallExp : public Exp
 {
 public:
@@ -120,6 +130,7 @@ public:
     {
         NOT_OP,
         NEG_OP,
+        POS_OP,
         PRE_INC_OP,
         PRE_DEC_OP,
         POST_INC_OP,
@@ -151,7 +162,9 @@ public:
         DIV_ASSIGN_OP,
         MOD_ASSIGN_OP,
         INCREMENT_OP,
-        DECREMENT_OP
+        DECREMENT_OP,
+        POST_INCREMENT_OP,
+        POST_DECREMENT_OP
     };
     string id;
     Exp *rhs;
@@ -171,6 +184,15 @@ public:
     ~PrintStatement();
 };
 
+class ExpressionStatement : public Stm
+{
+public:
+    Exp *expr;
+    ExpressionStatement(Exp *expr);
+    int accept(Visitor *visitor);
+    ~ExpressionStatement();
+};
+
 class Block : public Stm
 {
 public:
@@ -178,6 +200,15 @@ public:
     Block(StatementList *statements);
     int accept(Visitor *visitor);
     ~Block();
+};
+
+class RunBlock : public Stm
+{
+public:
+    StatementList *statements;
+    RunBlock(StatementList *statements);
+    int accept(Visitor *visitor);
+    ~RunBlock();
 };
 
 class FunctionDecl : public Stm
@@ -277,6 +308,16 @@ public:
     WhileStatement(Exp *condition, Stm *stmt);
     int accept(Visitor *visitor);
     ~WhileStatement();
+};
+
+class DoWhileStatement : public Stm
+{
+public:
+    Stm *stmt;
+    Exp *condition;
+    DoWhileStatement(Stm *stmt, Exp *condition);
+    int accept(Visitor *visitor);
+    ~DoWhileStatement();
 };
 
 class ForStatement : public Stm

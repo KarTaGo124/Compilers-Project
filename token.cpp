@@ -189,12 +189,15 @@ std::ostream &operator<<(std::ostream &outs, const Token &tok)
     case Token::RETURN:
         outs << "TOKEN(RETURN)";
         break;
-
     case Token::BREAK:
         outs << "TOKEN(BREAK)";
         break;
     case Token::CONTINUE:
         outs << "TOKEN(CONTINUE)";
+        break;
+
+    case Token::RUN:
+        outs << "TOKEN(RUN)";
         break;
 
     case Token::FALSE:

@@ -25,19 +25,23 @@ private:
     Exp *parsePostExp();
     Exp *parsePrimary();
     Stm *parseStatement();
+    Stm *parseTopLevelStatement();
     Stm *parseVarDeclaration();
     Stm *parseFunDeclaration();
     Stm *parseAssignment();
+    Stm *parseIDStatement();
     Stm *parseIncrementDecrement();
     Stm *parsePrintStatement();
     Stm *parseIfStatement();
     Stm *parseWhileStatement();
+    Stm *parseDoWhileStatement();
     Stm *parseForStatement();
     Stm *parseReturnStatement();
     Stm *parseBreakStatement();
     Stm *parseContinueStatement();
     Exp *parseRangeExpression();
     Block *parseBlock();
+    RunBlock *parseRunBlock();
     list<pair<string, string>> parseParameterList();
     list<Exp *> parseArgumentList();
 
