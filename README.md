@@ -62,9 +62,11 @@ PrimaryExpression = IDENTIFIER
                   | BOOLEAN
                   | ParenthesizedExpression
                   | FunctionCallExpression
+                  | RunExpression
 
 ParenthesizedExpression = "(" Expression ")"
 FunctionCallExpression = IDENTIFIER "(" [Arguments] ")"
+RunExpression = "run" "{" Statement* "}"
 Arguments = Expression ("," Expression)*
 
 Type = "Int" | "Float" | "String" | "Boolean" | "Unit"
