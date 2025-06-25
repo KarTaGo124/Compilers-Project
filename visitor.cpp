@@ -340,6 +340,18 @@ int PrintVisitor::visit(UnaryExp *exp)
     return 0;
 }
 
+int PrintVisitor::visit(RunExp *exp)
+{
+    cout << "run {" << endl;
+    indent++;
+    exp->block->statements->accept(this);
+    indent--;
+    cout << endl;
+    imprimirIndentacion();
+    cout << "}";
+    return 0;
+}
+
 void PrintVisitor::visit(AssignStatement *stm)
 {
     imprimirIndentacion();
@@ -1056,6 +1068,54 @@ int EvalVisitor::visit(UnaryExp *exp)
         break;
     }
     }
+
+    return lastType;
+}
+
+int EvalVisitor::visit(RunExp *exp)
+{
+    env.add_level();
+
+    int originalType = lastType;
+    int originalInt = lastInt;
+    float originalFloat = lastFloat;
+    string originalString = lastString;
+
+    StatementList *stmtList = exp->block->statements;
+    int finalType = 1;
+    int finalInt = 0;
+    float finalFloat = 0.0f;
+    string finalString = "";
+
+    if (stmtList && !stmtList->stms.empty())
+    {
+        for (auto stmt : stmtList->stms)
+        {
+            if (ExpressionStatement *exprStmt = dynamic_cast<ExpressionStatement *>(stmt))
+            {
+                finalType = exprStmt->expr->accept(this);
+                finalInt = lastInt;
+                finalFloat = lastFloat;
+                finalString = lastString;
+            }
+            else
+            {
+                stmt->accept(this);
+            }
+
+            if (breakExecuted || continueExecuted || returnExecuted)
+            {
+                break;
+            }
+        }
+    }
+
+    env.remove_level();
+
+    lastType = finalType;
+    lastInt = finalInt;
+    lastFloat = finalFloat;
+    lastString = finalString;
 
     return lastType;
 }

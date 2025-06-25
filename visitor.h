@@ -15,6 +15,7 @@ class StringExp;
 class ParenthesizedExp;
 class FunctionCallExp;
 class UnaryExp;
+class RunExp;
 class AssignStatement;
 class PrintStatement;
 class ExpressionStatement;
@@ -49,6 +50,7 @@ public:
     virtual int visit(ParenthesizedExp *exp) = 0;
     virtual int visit(FunctionCallExp *exp) = 0;
     virtual int visit(UnaryExp *exp) = 0;
+    virtual int visit(RunExp *exp) = 0;
     virtual void visit(AssignStatement *stm) = 0;
     virtual void visit(PrintStatement *stm) = 0;
     virtual void visit(ExpressionStatement *stm) = 0;
@@ -85,6 +87,7 @@ public:
     int visit(ParenthesizedExp *exp) override;
     int visit(FunctionCallExp *exp) override;
     int visit(UnaryExp *exp) override;
+    int visit(RunExp *exp) override;
     void visit(AssignStatement *stm) override;
     void visit(PrintStatement *stm) override;
     void visit(ExpressionStatement *stm) override;
@@ -130,6 +133,7 @@ public:
     int visit(ParenthesizedExp *exp) override;
     int visit(FunctionCallExp *exp) override;
     int visit(UnaryExp *exp) override;
+    int visit(RunExp *exp) override;
     void visit(AssignStatement *stm) override;
     void visit(PrintStatement *stm) override;
     void visit(ExpressionStatement *stm) override;

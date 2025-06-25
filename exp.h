@@ -143,6 +143,15 @@ public:
     ~UnaryExp();
 };
 
+class RunExp : public Exp
+{
+public:
+    Block *block;
+    RunExp(Block *block);
+    int accept(Visitor *visitor);
+    ~RunExp();
+};
+
 class Stm
 {
 public:

@@ -129,6 +129,11 @@ public:
             bool_levels.back()[var] = false;
             type_levels.back()[var] = "Boolean";
         }
+        else if (type == "String")
+        {
+            string_levels.back()[var] = "";
+            type_levels.back()[var] = "String";
+        }
     }
 
     void update(string var, int value)

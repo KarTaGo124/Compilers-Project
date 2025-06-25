@@ -688,6 +688,14 @@ Exp *Parser::parsePrimary()
             return new IdentifierExp(name);
         }
     }
+
+    if (check(Token::RUN))
+    {
+        advance();
+        Block *block = parseBlock();
+        return new RunExp(block);
+    }
+
     cout << "Error: expresión inesperada: " << current->text << endl;
     std::exit(1);
 }
@@ -1081,8 +1089,10 @@ Stm *Parser::parseIDStatement()
         }
         else
         {
-            cout << "Error: se esperaba un operador de asignación." << endl;
-            std::exit(1);
+            Exp *expr = new IdentifierExp(id);
+            match(Token::SEMICOLON);
+
+            return new ExpressionStatement(expr);
         }
 
         Exp *value = parseExpression();
