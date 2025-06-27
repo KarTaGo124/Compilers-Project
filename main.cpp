@@ -39,8 +39,7 @@ int main(int argc, const char *argv[])
     cout << endl;
     cout << "Iniciando parsing:" << endl;
     Parser parser(&scanner);
-    try
-    {
+    try {
         Program *program = parser.parseProgram();
         cout << "Parsing exitoso" << endl
              << endl;
@@ -53,6 +52,11 @@ int main(int argc, const char *argv[])
         cout << endl;
         cout << "EJECUTAR:" << endl;
         evalVisitor.ejecutar(program);
+        cout<< endl;
+        cout << "GENERAR CODIGO ASSEMBLY:" << endl;
+        GenCodeVisitor genCodeVisitor(cout);
+        genCodeVisitor.generar(program);
+        cout << endl;
         delete program;
     }
     catch (const exception &e)

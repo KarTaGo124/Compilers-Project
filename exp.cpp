@@ -123,6 +123,10 @@ FunctionCallExp::~FunctionCallExp()
 UnaryExp::UnaryExp(UnaryOp op, Exp *expr) : op(op), expr(expr) {}
 UnaryExp::~UnaryExp() { delete expr; }
 
+RunExp::RunExp(Block *block) : block(block) {}
+int RunExp::accept(Visitor *visitor) { return visitor->visit(this); }
+RunExp::~RunExp() { delete block; }
+
 FunctionDecl::FunctionDecl(const string &name, const string &returnType, Block *body) : name(name), returnType(returnType), body(body) {}
 void FunctionDecl::addParam(const string &name, const string &type)
 {
