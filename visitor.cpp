@@ -1622,11 +1622,9 @@ int DoWhileStatement::accept(Visitor *visitor)
     return 0;
 }
 
-// Assembly Code Generation Implementation
 void GenCodeVisitor::generar(Program* program) {
     if (!program) return;
 
-    // First pass: process all statements to collect float constants
     if (program->statements) {
         for (auto stmt : program->statements->stms) {
             if (VarDec* varDecl = dynamic_cast<VarDec*>(stmt)) {
@@ -1647,25 +1645,21 @@ void GenCodeVisitor::generar(Program* program) {
     cout << "print_str_fmt: .string \"%s\\n\"\n";
     cout << "print_float_fmt: .string \"%.6g\\n\"\n";
 
-    // Generate global variable storage
     for (auto& [var, _] : memoriaGlobal) {
         cout << var << ": .quad 0\n";
     }
 
-    // Generate float constants section
     cout << "\n.section .rodata\n";
     cout << ".align 8\n";
     cout << ".L_zero: .double 0.0\n";
     cout << ".L_one: .double 1.0\n";
 
-    // Generate float constants used in the program
     for (auto& [value, label] : floatConstants) {
         cout << label << ": .double " << value << "\n";
     }
 
     cout << "\n.text\n";
 
-    // Second pass: generate functions
     if (program->statements) {
         for (auto stmt : program->statements->stms) {
             if (FunctionDecl* funcDecl = dynamic_cast<FunctionDecl*>(stmt)) {
@@ -1679,18 +1673,18 @@ void GenCodeVisitor::generar(Program* program) {
 
 int GenCodeVisitor::visit(NumberExp* exp) {
     cout << " movq $" << exp->value << ", %rax\n";
-    return 1; // Int type
+    return 1;
 }
 
 int GenCodeVisitor::visit(DecimalExp* exp) {
     string label = getFloatConstantLabel(exp->value);
     cout << " movsd " << label << "(%rip), %xmm0\n";
-    return 2; // Float type
+    return 2;
 }
 
 int GenCodeVisitor::visit(BoolExp* exp) {
     cout << " movq $" << (exp->value ? 1 : 0) << ", %rax\n";
-    return 3; // Bool type
+    return 3;
 }
 
 int GenCodeVisitor::visit(StringExp* exp) {
@@ -1700,26 +1694,26 @@ int GenCodeVisitor::visit(StringExp* exp) {
     cout << label << ": .string \"" << exp->value << "\"\n";
     cout << " .text\n";
     cout << " leaq " << label << "(%rip), %rax\n";
-    return 5; // String type
+    return 5;
 }
 
 int GenCodeVisitor::visit(IdentifierExp* exp) {
     int type = getVariableType(exp->name);
 
-    if (type == 2) { // Float type
+    if (type == 2) {
         if (memoriaGlobal.count(exp->name))
             cout << " movsd " << exp->name << "(%rip), %xmm0\n";
         else if (memoria.count(exp->name))
             cout << " movsd " << memoria[exp->name] << "(%rbp), %xmm0\n";
         else
-            cout << " xorpd %xmm0, %xmm0\n"; // Zero for undefined
+            cout << " xorpd %xmm0, %xmm0\n";
     } else {
         if (memoriaGlobal.count(exp->name))
             cout << " movq " << exp->name << "(%rip), %rax\n";
         else if (memoria.count(exp->name))
             cout << " movq " << memoria[exp->name] << "(%rbp), %rax\n";
         else
-            cout << " movq $0, %rax\n"; // Default value
+            cout << " movq $0, %rax\n";
     }
     return type;
 }
@@ -1727,7 +1721,6 @@ int GenCodeVisitor::visit(IdentifierExp* exp) {
 int GenCodeVisitor::visit(BinaryExp* exp) {
     int leftType = exp->left->accept(this);
 
-    // Save left operand
     if (leftType == 2) {
         cout << " movsd %xmm0, -8(%rsp)\n";
         cout << " subq $8, %rsp\n";
@@ -1737,18 +1730,15 @@ int GenCodeVisitor::visit(BinaryExp* exp) {
 
     int rightType = exp->right->accept(this);
 
-    // Handle type promotion and operations
     bool isFloat = (leftType == 2 || rightType == 2);
 
     if (isFloat) {
-        // Load right operand into xmm1
         if (rightType == 2) {
             cout << " movsd %xmm0, %xmm1\n";
         } else {
             cout << " cvtsi2sd %rax, %xmm1\n";
         }
 
-        // Load left operand into xmm0
         if (leftType == 2) {
             cout << " movsd (%rsp), %xmm0\n";
             cout << " addq $8, %rsp\n";
@@ -1757,7 +1747,6 @@ int GenCodeVisitor::visit(BinaryExp* exp) {
             cout << " cvtsi2sd %rax, %xmm0\n";
         }
 
-        // Perform floating-point operation
         switch (exp->op) {
             case PLUS_OP:
                 cout << " addsd %xmm1, %xmm0\n";
@@ -1808,9 +1797,8 @@ int GenCodeVisitor::visit(BinaryExp* exp) {
                 cout << " movzbq %al, %rax\n";
                 return 3;
         }
-        return 2; // Float result
+        return 2;
     } else {
-        // Integer operations
         cout << " movq %rax, %rcx\n";
         cout << " popq %rax\n";
 
@@ -1886,7 +1874,7 @@ int GenCodeVisitor::visit(BinaryExp* exp) {
                 cout << " movzbq %al, %rax\n";
                 return 3;
         }
-        return 1; // Integer result
+        return 1;
     }
 }
 
@@ -1923,10 +1911,9 @@ int GenCodeVisitor::visit(UnaryExp* exp) {
         case UnaryExp::POST_INC_OP:
         case UnaryExp::PRE_DEC_OP:
         case UnaryExp::POST_DEC_OP:
-            // Handle increment/decrement operations
             if (IdentifierExp* id_exp = dynamic_cast<IdentifierExp*>(exp->expr)) {
                 int var_type = getVariableType(id_exp->name);
-                if (var_type == 2) { // Float
+                if (var_type == 2) {
                     if (memoriaGlobal.count(id_exp->name)) {
                         cout << " movsd " << id_exp->name << "(%rip), %xmm0\n";
                         cout << " movsd .L_one(%rip), %xmm1\n";
@@ -1945,7 +1932,7 @@ int GenCodeVisitor::visit(UnaryExp* exp) {
                         cout << " movsd %xmm0, " << memoria[id_exp->name] << "(%rbp)\n";
                     }
                     return 2;
-                } else { // Integer
+                } else {
                     if (memoriaGlobal.count(id_exp->name)) {
                         cout << " movq " << id_exp->name << "(%rip), %rax\n";
                         if (exp->op == UnaryExp::PRE_INC_OP || exp->op == UnaryExp::POST_INC_OP) {
@@ -1984,13 +1971,11 @@ int GenCodeVisitor::visit(ParenthesizedExp* exp) {
 }
 
 int GenCodeVisitor::visit(RangeExp* exp) {
-    // For ranges, we don't generate code directly
-    // They are handled in the context where they're used (e.g., for loops)
+
     return 0;
 }
 
 int GenCodeVisitor::visit(RunExp* exp) {
-    // Handle run blocks
     if (exp->block && exp->block->statements) {
         exp->block->statements->accept(this);
     }
@@ -2001,22 +1986,21 @@ int GenCodeVisitor::visit(FunctionCallExp* exp) {
     vector<string> argRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     vector<string> xmmRegs = {"%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7"};
 
-    // Handle built-in functions
     if (exp->name == "println" || exp->name == "print") {
         if (!exp->args.empty()) {
             auto it = exp->args.begin();
             int type = (*it)->accept(this);
 
-            if (type == 5) { // String
+            if (type == 5) {
                 cout << " movq %rax, %rsi\n";
                 cout << " leaq print_str_fmt(%rip), %rdi\n";
                 cout << " movl $0, %eax\n";
                 cout << " call printf@PLT\n";
-            } else if (type == 2) { // Float
+            } else if (type == 2){
                 cout << " movq $1, %rax\n";
                 cout << " leaq print_float_fmt(%rip), %rdi\n";
                 cout << " call printf@PLT\n";
-            } else { // Integer/Boolean
+            } else {
                 cout << " movq %rax, %rsi\n";
                 cout << " leaq print_fmt(%rip), %rdi\n";
                 cout << " movl $0, %eax\n";
@@ -2026,40 +2010,35 @@ int GenCodeVisitor::visit(FunctionCallExp* exp) {
         return 0;
     }
 
-    // Regular function call with proper ABI handling
     int intArgIndex = 0;
     int floatArgIndex = 0;
 
     for (auto it = exp->args.begin(); it != exp->args.end(); it++) {
         int argType = (*it)->accept(this);
 
-        if (argType == 2) { // Float argument
+        if (argType == 2) {
             if (floatArgIndex < 8) {
                 if (floatArgIndex != 0) {
                     cout << " movsd %xmm0, " << xmmRegs[floatArgIndex] << "\n";
                 }
                 floatArgIndex++;
             } else {
-                // Push to stack for excess float args
                 cout << " movsd %xmm0, -8(%rsp)\n";
                 cout << " subq $8, %rsp\n";
             }
-        } else { // Integer/pointer argument
+        } else {
             if (intArgIndex < 6) {
                 cout << " movq %rax, " << argRegs[intArgIndex] << "\n";
                 intArgIndex++;
             } else {
-                // Push to stack for excess int args
                 cout << " pushq %rax\n";
             }
         }
     }
 
-    // Set number of float arguments in %al
     cout << " movl $" << min(floatArgIndex, 8) << ", %eax\n";
     cout << " call " << exp->name << "\n";
 
-    // Clean up stack if necessary
     if (exp->args.size() > 6) {
         int stackCleanup = (exp->args.size() - 6) * 8;
         cout << " addq $" << stackCleanup << ", %rsp\n";
@@ -2077,24 +2056,21 @@ void GenCodeVisitor::visit(AssignStatement* stm) {
         case AssignStatement::ASSIGN_OP: {
             int valueType = stm->rhs->accept(this);
 
-            if (varType == 2) { // Float variable
+            if (varType == 2) {
                 if (valueType == 2) {
-                    // Float to float
                     if (memoriaGlobal.count(stm->id))
                         cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
                     else
                         cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
                 } else {
-                    // Int to float conversion
                     cout << " cvtsi2sd %rax, %xmm0\n";
                     if (memoriaGlobal.count(stm->id))
                         cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
                     else
                         cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
                 }
-            } else { // Integer/Boolean variable
+            } else {
                 if (valueType == 2) {
-                    // Float to int conversion
                     cout << " cvttsd2si %xmm0, %rax\n";
                 }
                 if (memoriaGlobal.count(stm->id))
@@ -2110,31 +2086,26 @@ void GenCodeVisitor::visit(AssignStatement* stm) {
             break;
         }
 
-        // Handle compound assignment operators
         case AssignStatement::PLUS_ASSIGN_OP:
         case AssignStatement::MINUS_ASSIGN_OP:
         case AssignStatement::MUL_ASSIGN_OP:
         case AssignStatement::DIV_ASSIGN_OP:
         case AssignStatement::MOD_ASSIGN_OP: {
-            if (varType == 2) { // Float variable
-                // Load current value
+            if (varType == 2) {
                 if (memoriaGlobal.count(stm->id))
                     cout << " movsd " << stm->id << "(%rip), %xmm0\n";
                 else
                     cout << " movsd " << memoria[stm->id] << "(%rbp), %xmm0\n";
 
-                // Save to stack
                 cout << " movsd %xmm0, -8(%rsp)\n";
                 cout << " subq $8, %rsp\n";
 
                 int rhsType = stm->rhs->accept(this);
 
-                // Convert rhs to float if needed
                 if (rhsType == 1) {
                     cout << " cvtsi2sd %rax, %xmm0\n";
                 }
 
-                // Load lhs and perform operation
                 cout << " movsd (%rsp), %xmm1\n";
                 cout << " addq $8, %rsp\n";
 
@@ -2153,12 +2124,11 @@ void GenCodeVisitor::visit(AssignStatement* stm) {
                         break;
                 }
 
-                // Store result
                 if (memoriaGlobal.count(stm->id))
                     cout << " movsd %xmm1, " << stm->id << "(%rip)\n";
                 else
                     cout << " movsd %xmm1, " << memoria[stm->id] << "(%rbp)\n";
-            } else { // Integer
+            } else {
                 if (memoriaGlobal.count(stm->id))
                     cout << " movq " << stm->id << "(%rip), %rax\n";
                 else
@@ -2252,16 +2222,16 @@ void GenCodeVisitor::visit(PrintStatement* stm) {
 
     int type = stm->e->accept(this);
 
-    if (type == 5) { // String
+    if (type == 5) {
         cout << " movq %rax, %rsi\n";
         cout << " leaq print_str_fmt(%rip), %rdi\n";
         cout << " movl $0, %eax\n";
         cout << " call printf@PLT\n";
-    } else if (type == 2) { // Float
+    } else if (type == 2) {
         cout << " movq $1, %rax\n";
         cout << " leaq print_float_fmt(%rip), %rdi\n";
         cout << " call printf@PLT\n";
-    } else { // Integer/Boolean
+    } else {
         cout << " movq %rax, %rsi\n";
         cout << " leaq print_fmt(%rip), %rdi\n";
         cout << " movl $0, %eax\n";
@@ -2278,8 +2248,7 @@ void GenCodeVisitor::visit(ExpressionStatement* stm) {
 void GenCodeVisitor::visit(VarDec* stm) {
     if (!stm) return;
 
-    // Determine variable type
-    int varType = 1; // Default to int
+    int varType = 1;
     if (stm->type == "Float") {
         varType = 2;
     } else if (stm->type == "Boolean") {
@@ -2297,20 +2266,17 @@ void GenCodeVisitor::visit(VarDec* stm) {
         offset -= 8;
     }
 
-    // Handle initialization
     if (stm->value) {
         int valueType = stm->value->accept(this);
 
-        if (varType == 2) { // Float variable
+        if (varType == 2) {
             if (valueType == 2) {
-                // Float to float
                 if (!entornoFuncion) {
                     cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
                 } else {
                     cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
                 }
             } else {
-                // Int to float conversion
                 cout << " cvtsi2sd %rax, %xmm0\n";
                 if (!entornoFuncion) {
                     cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
@@ -2319,9 +2285,7 @@ void GenCodeVisitor::visit(VarDec* stm) {
                 }
             }
         } else {
-            // Integer/Boolean/String variable
             if (valueType == 2) {
-                // Float to int conversion
                 cout << " cvttsd2si %xmm0, %rax\n";
             }
             if (!entornoFuncion) {
@@ -2424,19 +2388,16 @@ void GenCodeVisitor::visit(ForStatement* stm) {
 
         labelStack.push(forLabel);
 
-        // Evaluar y guardar start value
         range->start->accept(this);
         int startOffset = offset;
         offset -= 8;
         cout << " movq %rax, " << startOffset << "(%rbp)\n";
 
-        // Evaluar y guardar end value
         range->end->accept(this);
         int endOffset = offset;
         offset -= 8;
         cout << " movq %rax, " << endOffset << "(%rbp)\n";
 
-        // Si hay step, evaluarlo y guardarlo
         int stepOffset = 0;
         if (range->step != nullptr) {
             range->step->accept(this);
@@ -2445,8 +2406,6 @@ void GenCodeVisitor::visit(ForStatement* stm) {
             cout << " movq %rax, " << stepOffset << "(%rbp)\n";
         }
 
-        // Asegurar que la variable del bucle tenga su propio espacio
-        // No reutilizar si ya existe en el scope actual
         bool isNewVar = (memoria.find(stm->id) == memoria.end());
         if (isNewVar) {
             memoria[stm->id] = offset;
@@ -2454,38 +2413,24 @@ void GenCodeVisitor::visit(ForStatement* stm) {
             setVariableType(stm->id, 1);
         }
 
-        // Inicializar loop variable con start value
         cout << " movq " << startOffset << "(%rbp), %rax\n";
         cout << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
-
-        // Etiqueta de inicio del loop
         cout << forLabel << ":\n";
-
-        // Cargar valores para comparación
         cout << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
         cout << " movq " << endOffset << "(%rbp), %rcx\n";
         cout << " cmpq %rcx, %rax\n";
-
-        // Lógica de condición corregida
         if (range->until) {
-            // Para until (0 until 3): salir cuando i >= end
             cout << " jge " << endLabel << "\n";
         } else if (range->downTo) {
-            // Para downTo (10 downTo 7): salir cuando i < end
             cout << " jl " << endLabel << "\n";
         } else {
-            // Para rango normal (1..5): salir cuando i > end
             cout << " jg " << endLabel << "\n";
         }
-
-        // Ejecutar cuerpo del loop
         if (stm->stmt) stm->stmt->accept(this);
 
-        // Actualizar variable del loop
         cout << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
 
         if (range->downTo) {
-            // Para downTo: decrementar
             if (range->step != nullptr) {
                 cout << " movq " << stepOffset << "(%rbp), %rcx\n";
                 cout << " subq %rcx, %rax\n";
@@ -2493,7 +2438,6 @@ void GenCodeVisitor::visit(ForStatement* stm) {
                 cout << " decq %rax\n";
             }
         } else {
-            // Para rangos normales y until: incrementar
             if (range->step != nullptr) {
                 cout << " movq " << stepOffset << "(%rbp), %rcx\n";
                 cout << " addq %rcx, %rax\n";
@@ -2526,7 +2470,6 @@ void GenCodeVisitor::visit(FunctionDecl* stm) {
     cout << " pushq %rbp\n";
     cout << " movq %rsp, %rbp\n";
 
-    // Handle parameters with proper type handling
     int intParamIndex = 0;
     int floatParamIndex = 0;
 
@@ -2543,7 +2486,7 @@ void GenCodeVisitor::visit(FunctionDecl* stm) {
                 floatParamIndex++;
             }
         } else {
-            int type = 1; // Default to int
+            int type = 1;
             if (paramType == "Boolean") type = 3;
             else if (paramType == "String") type = 5;
 
@@ -2558,24 +2501,19 @@ void GenCodeVisitor::visit(FunctionDecl* stm) {
         offset -= 8;
     }
 
-    // Calculate and allocate stack space needed
     int reserva = -offset - 8;
     if (reserva > 0) {
         cout << " subq $" << reserva << ", %rsp\n";
     }
 
-    // Process function body
     if (stm->body) {
         stm->body->accept(this);
     }
 
     cout << ".end_" << stm->name << ":\n";
 
-    // Handle return value based on return type
     if (stm->returnType == "Float") {
-        // Float return value should be in %xmm0
     } else {
-        // Integer/Boolean/String return values in %rax
     }
 
     cout << " leave\n";
@@ -2587,7 +2525,6 @@ void GenCodeVisitor::visit(FunctionDecl* stm) {
 void GenCodeVisitor::visit(ReturnStatement* stm) {
     if (stm && stm->expr) {
         int type = stm->expr->accept(this);
-        // Value is already in the correct register (%rax for int, %xmm0 for float)
     }
     cout << " jmp .end_" << nombreFuncion << "\n";
 }
@@ -2614,12 +2551,11 @@ void GenCodeVisitor::visit(ContinueStatement* stm) {
     }
 }
 
-// Helper functions implementation
 int GenCodeVisitor::getVariableType(const string& name) {
     if (variableTypes.count(name)) {
         return variableTypes[name];
     }
-    return 1; // Default to int
+    return 1;
 }
 
 void GenCodeVisitor::setVariableType(const string& name, int type) {
