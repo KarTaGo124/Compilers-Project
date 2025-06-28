@@ -1,0 +1,19 @@
+
+fun main(): Unit {
+    var baseString: String = "Developer"
+    var counter: Int = 2
+    var accumulated: String = "Start"
+
+    if (counter == 0) {
+        accumulated = accumulated + " Zero"
+    } else if (counter == 1) {
+        accumulated += " One"
+    } else if (counter == 2) {
+        accumulated = accumulated + " Two"
+    } else {
+        accumulated += " Other"
+    }
+
+    println(accumulated)
+    println("Test strings condicionales completado")
+}

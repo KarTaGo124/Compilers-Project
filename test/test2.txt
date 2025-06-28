@@ -1,0 +1,12 @@
+var globalCounter: Int = 0
+val PI: Float = 3.14159f
+
+fun main(): Unit {
+    var localCounter: Int = 100
+    val localConstant: String = "Local constant"
+    var localFlag: Boolean = false
+
+    globalCounter = localCounter + 50
+    println(globalCounter)
+    println("Test declaracion globales locales completado")
+}

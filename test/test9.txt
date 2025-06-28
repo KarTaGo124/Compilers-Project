@@ -1,0 +1,21 @@
+fun main(): Unit {
+    var counter: Int = 0
+    var sum: Int = 0
+
+    while (counter < 10 && sum < 30) {
+        sum += counter
+        counter++
+
+        if (counter == 5) {
+            continue
+        }
+
+        if (sum > 25) {
+            break
+        }
+    }
+    println(counter)
+    println(sum)
+
+    println("Test control while completado")
+}

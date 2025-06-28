@@ -1,0 +1,16 @@
+fun main(): Unit {
+    var mutableInt: Int = 10
+    var mutableString: String = "Initial"
+    var mutableBool: Boolean = true
+
+    mutableInt = 20
+    mutableString = "Modified"
+    mutableBool = false
+
+    mutableInt = mutableInt * 2
+    mutableString = mutableString + " String"
+
+    println(mutableString)
+
+    println("Test declaracion reasignacion completado")
+}

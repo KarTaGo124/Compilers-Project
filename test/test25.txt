@@ -1,0 +1,29 @@
+fun buildComplexMessage(part1: String, part2: String): String {
+    return "Result " + part1 + " " + part2
+}
+
+fun main(): Unit {
+    var identifier: String = "Service"
+    var operation: String = "Transform"
+    var target: String = "Data"
+
+    var step1: String = identifier + " " + operation
+    var step2: String = step1 + " " + target
+
+    var message1: String = buildComplexMessage("Input", "Output")
+    var message2: String = buildComplexMessage(step1, "Success")
+
+    var phase: Int = 1
+    var accumulated: String = "Begin"
+
+    if (phase == 1) {
+        accumulated = accumulated + " " + message1
+        accumulated = accumulated + " " + message2
+    } else {
+        accumulated = accumulated + " " + message2
+    }
+
+    var finalMessage: String = "Production " + accumulated + " COMPLETED"
+    println(finalMessage)
+    println("Test strings operaciones complejas completado")
+}

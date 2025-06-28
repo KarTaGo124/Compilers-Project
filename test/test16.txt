@@ -1,0 +1,16 @@
+fun main(): Unit {
+    var result1: Float = (3.14159f * 2.71828f) + (5.0f / 2.5f) - 1.414f
+    var result2: Float = ((7.5f + 2.25f) * (4.0f - 1.5f)) / (3.3f + 0.7f)
+    var result3: Float = (result1 * result2) % 5.0f
+
+    var complexFloat: Float = (((1.1f + 2.2f) * 3.3f) - ((4.4f / 2.0f) + 1.0f)) / 2.5f
+    result3 += complexFloat - (result1 / result2)
+
+    println(result1)
+    println(result2)
+    println(result3)
+    println(complexFloat)
+    println(result3)
+
+    println("Test floats aritmeticas-complejas completado")
+}

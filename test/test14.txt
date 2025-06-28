@@ -1,0 +1,23 @@
+fun calculateArea(length: Float, width: Float): Float {
+    return length * width
+}
+
+fun concatenateThree(s1: String, s2: String, s3: String): String {
+    return s1 + " " + s2 + " " + s3
+}
+
+fun logicalOperation(a: Boolean, b: Boolean, c: Boolean): Boolean {
+    return (a && b) || c
+}
+
+fun main(): Unit {
+    var area: Float = calculateArea(5.5f, 3.2f)
+    var fullString: String = concatenateThree("Hello", "beautiful", "world")
+    var logicResult: Boolean = logicalOperation(true, false, true)
+
+    println(area)
+    println(fullString)
+    println(logicResult)
+
+    println("Test funciones parametros-multiples completado")
+}

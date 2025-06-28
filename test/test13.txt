@@ -1,0 +1,23 @@
+fun getInteger(): Int {
+    return 42
+}
+
+fun getFloat(): Float {
+    return 3.14159f
+}
+
+fun getString(): String {
+    return "Function result"
+}
+
+fun main(): Unit {
+    var intResult: Int = getInteger()
+    var floatResult: Float = getFloat()
+    var stringResult: String = getString()
+
+    println(intResult)
+    println(floatResult)
+    println(stringResult)
+
+    println("Test funciones tipos-retorno completado")
+}

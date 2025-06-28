@@ -1,0 +1,19 @@
+fun main(): Unit {
+    var accumulator: Float = 10.5f
+    var multiplier: Float = 2.25f
+    var divisor: Float = 1.5f
+
+    accumulator += 5.75f * 2.0f
+    accumulator -= multiplier / divisor
+    accumulator *= (3.14f + 1.86f) / 2.5f
+    accumulator /= divisor + 0.5f
+    accumulator %= 7.0f
+
+    var secondary: Float = 20.0f
+    secondary += accumulator - 3.33f
+    secondary *= divisor / multiplier
+    println(accumulator)
+    println(secondary)
+
+    println("Test floats asignacion-compuestos completado")
+}

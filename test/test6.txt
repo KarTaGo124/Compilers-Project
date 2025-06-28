@@ -1,0 +1,15 @@
+fun main(): Unit {
+    var num: Int = 5
+    var preInc: Int = ++num
+    var postInc: Int = num++
+    var preDec: Int = --num
+    var postDec: Int = num--
+
+    var negation: Int = -num
+    println(negation)
+    var doubleNeg: Int = -(-num)
+    var boolNeg: Boolean = !(true && true)
+    println(boolNeg)
+
+    println("Test expresiones unarias completado")
+}

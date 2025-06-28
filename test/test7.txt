@@ -1,0 +1,17 @@
+fun main(): Unit {
+    var score: Int = 85
+    var grade: String = ""
+
+    if (score >= 90) {
+        grade = "A"
+    } else if (score >= 80) {
+        grade = "B"
+    } else if (score >= 70) {
+        grade = "C"
+    } else {
+        grade = "F"
+    }
+    println(grade)
+
+    println("Test control if-else completado")
+}

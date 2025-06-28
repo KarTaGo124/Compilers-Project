@@ -1,0 +1,23 @@
+fun main(): Unit {
+    var age: Int = 25
+    var hasLicense: Boolean = true
+    var hasInsurance: Boolean = true
+    var canDrive: Boolean = false
+
+    if (age >= 18) {
+        if (hasLicense) {
+            if (hasInsurance) {
+                canDrive = true
+            } else {
+                canDrive = false
+            }
+        } else {
+            canDrive = false
+        }
+    } else {
+        canDrive = false
+    }
+    println(canDrive)
+
+    println("Test control if-anidados completado")
+}

@@ -1,0 +1,36 @@
+fun formatOutput(name: String, value: String): String {
+    return name + " " + value
+}
+
+fun createPath(folder: String, file: String): String {
+    return folder + " " + file + " txt"
+}
+
+fun main(): Unit {
+    var userName: String = "admin"
+    var sessionId: String = "12345"
+    var timestamp: String = "20240628"
+
+    var loginInfo: String = userName + " " + timestamp
+    var fullSession: String = "session " + sessionId + " " + userName
+
+    var config1: String = formatOutput("user", loginInfo)
+    var config2: String = formatOutput("session", fullSession)
+
+    var level: Int = 2
+    var logLevel: String = "a"
+
+    if (level == 1) {
+        logLevel = "DEBUG"
+    } else if (level == 2) {
+        logLevel = "INFO"
+    } else {
+        logLevel = "ERROR"
+    }
+
+    var logPath: String = createPath("logs", "system " + logLevel)
+    var finalLog: String = config1 + " " + config2 + " " + logPath
+
+    println(finalLog)
+    println("Test strings basicos completado")
+}

@@ -1,0 +1,11 @@
+fun main(): Unit {
+    var intVar: Int = 42
+    val floatVal: Float = 3.14159f
+    var stringVar: String = "Hello Kotlin"
+    val booleanVal: Boolean = false
+
+    println(floatVal)
+
+
+    println("Test declaracion tipos basicos completado")
+}

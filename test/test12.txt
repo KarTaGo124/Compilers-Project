@@ -1,0 +1,15 @@
+fun main(): Unit {
+    var sum: Int = 0
+
+    for (i in 1..10) {
+        sum += i
+        println(i)
+    }
+
+    for (j in 0 until 5) {
+        sum += j * 2
+        println(sum)
+    }
+
+    println("Test ranges basicos completado")
+}
