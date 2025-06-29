@@ -39,7 +39,8 @@ int main(int argc, const char *argv[])
     cout << endl;
     cout << "Iniciando parsing:" << endl;
     Parser parser(&scanner);
-    try {
+    try
+    {
         Program *program = parser.parseProgram();
         cout << "Parsing exitoso" << endl
              << endl;
@@ -52,10 +53,25 @@ int main(int argc, const char *argv[])
         cout << endl;
         cout << "EJECUTAR:" << endl;
         evalVisitor.ejecutar(program);
-        cout<< endl;
+        cout << endl;
         cout << "GENERAR CODIGO ASSEMBLY:" << endl;
-        GenCodeVisitor genCodeVisitor(cout);
+
+        string inputFile(argv[1]);
+        size_t dotPos = inputFile.find_last_of('.');
+        string baseName = (dotPos == string::npos) ? inputFile : inputFile.substr(0, dotPos);
+        string outputFilename = baseName + ".s";
+        ofstream outfile(outputFilename);
+        if (!outfile.is_open())
+        {
+            cerr << "Error al crear el archivo de salida: " << outputFilename << endl;
+            return 1;
+        }
+        cout << "Generando codigo ensamblador en " << outputFilename << endl;
+
+        GenCodeVisitor genCodeVisitor(outfile);
         genCodeVisitor.generar(program);
+        outfile.close();
+        cout << "Archivo " << outputFilename << " generado exitosamente" << endl;
         cout << endl;
         delete program;
     }

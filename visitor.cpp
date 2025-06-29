@@ -1648,27 +1648,27 @@ void GenCodeVisitor::generar(Program *program)
         }
     }
 
-    cout << ".data\n";
-    cout << "print_fmt: .string \"%ld\\n\"\n";
-    cout << "print_str_fmt: .string \"%s\\n\"\n";
-    cout << "print_float_fmt: .string \"%.6g\\n\"\n";
+    out << ".data\n";
+    out << "print_fmt: .string \"%ld\\n\"\n";
+    out << "print_str_fmt: .string \"%s\\n\"\n";
+    out << "print_float_fmt: .string \"%.6g\\n\"\n";
 
     for (auto it = memoriaGlobal.begin(); it != memoriaGlobal.end(); ++it)
     {
-        cout << it->first << ": .quad 0\n";
+        out << it->first << ": .quad 0\n";
     }
 
-    cout << "\n.section .rodata\n";
-    cout << ".align 8\n";
-    cout << ".L_zero: .double 0.0\n";
-    cout << ".L_one: .double 1.0\n";
+    out << "\n.section .rodata\n";
+    out << ".align 8\n";
+    out << ".L_zero: .double 0.0\n";
+    out << ".L_one: .double 1.0\n";
 
     for (auto it = floatConstants.begin(); it != floatConstants.end(); ++it)
     {
-        cout << it->second << ": .double " << it->first << "\n";
+        out << it->second << ": .double " << it->first << "\n";
     }
 
-    cout << "\n.text\n";
+    out << "\n.text\n";
 
     if (program->statements)
     {
@@ -1681,25 +1681,25 @@ void GenCodeVisitor::generar(Program *program)
         }
     }
 
-    cout << ".section .note.GNU-stack,\"\",@progbits\n";
+    out << ".section .note.GNU-stack,\"\",@progbits\n";
 }
 
 int GenCodeVisitor::visit(NumberExp *exp)
 {
-    cout << " movq $" << exp->value << ", %rax\n";
+    out << " movq $" << exp->value << ", %rax\n";
     return 1;
 }
 
 int GenCodeVisitor::visit(DecimalExp *exp)
 {
     string label = getFloatConstantLabel(exp->value);
-    cout << " movsd " << label << "(%rip), %xmm0\n";
+    out << " movsd " << label << "(%rip), %xmm0\n";
     return 2;
 }
 
 int GenCodeVisitor::visit(BoolExp *exp)
 {
-    cout << " movq $" << (exp->value ? 1 : 0) << ", %rax\n";
+    out << " movq $" << (exp->value ? 1 : 0) << ", %rax\n";
     return 3;
 }
 
@@ -1707,10 +1707,10 @@ int GenCodeVisitor::visit(StringExp *exp)
 {
     static int stringCount = 0;
     string label = "str_" + to_string(stringCount++);
-    cout << " .section .rodata\n";
-    cout << label << ": .string \"" << exp->value << "\"\n";
-    cout << " .text\n";
-    cout << " leaq " << label << "(%rip), %rax\n";
+    out << " .section .rodata\n";
+    out << label << ": .string \"" << exp->value << "\"\n";
+    out << " .text\n";
+    out << " leaq " << label << "(%rip), %rax\n";
     return 5;
 }
 
@@ -1721,20 +1721,20 @@ int GenCodeVisitor::visit(IdentifierExp *exp)
     if (type == 2)
     {
         if (memoriaGlobal.count(exp->name))
-            cout << " movsd " << exp->name << "(%rip), %xmm0\n";
+            out << " movsd " << exp->name << "(%rip), %xmm0\n";
         else if (memoria.count(exp->name))
-            cout << " movsd " << memoria[exp->name] << "(%rbp), %xmm0\n";
+            out << " movsd " << memoria[exp->name] << "(%rbp), %xmm0\n";
         else
-            cout << " xorpd %xmm0, %xmm0\n";
+            out << " xorpd %xmm0, %xmm0\n";
     }
     else
     {
         if (memoriaGlobal.count(exp->name))
-            cout << " movq " << exp->name << "(%rip), %rax\n";
+            out << " movq " << exp->name << "(%rip), %rax\n";
         else if (memoria.count(exp->name))
-            cout << " movq " << memoria[exp->name] << "(%rbp), %rax\n";
+            out << " movq " << memoria[exp->name] << "(%rbp), %rax\n";
         else
-            cout << " movq $0, %rax\n";
+            out << " movq $0, %rax\n";
     }
     return type;
 }
@@ -1745,12 +1745,12 @@ int GenCodeVisitor::visit(BinaryExp *exp)
 
     if (leftType == 2)
     {
-        cout << " movsd %xmm0, -8(%rsp)\n";
-        cout << " subq $8, %rsp\n";
+        out << " movsd %xmm0, -8(%rsp)\n";
+        out << " subq $8, %rsp\n";
     }
     else
     {
-        cout << " pushq %rax\n";
+        out << " pushq %rax\n";
     }
 
     int rightType = exp->right->accept(this);
@@ -1761,153 +1761,153 @@ int GenCodeVisitor::visit(BinaryExp *exp)
     {
         if (rightType == 2)
         {
-            cout << " movsd %xmm0, %xmm1\n";
+            out << " movsd %xmm0, %xmm1\n";
         }
         else
         {
-            cout << " cvtsi2sd %rax, %xmm1\n";
+            out << " cvtsi2sd %rax, %xmm1\n";
         }
 
         if (leftType == 2)
         {
-            cout << " movsd (%rsp), %xmm0\n";
-            cout << " addq $8, %rsp\n";
+            out << " movsd (%rsp), %xmm0\n";
+            out << " addq $8, %rsp\n";
         }
         else
         {
-            cout << " popq %rax\n";
-            cout << " cvtsi2sd %rax, %xmm0\n";
+            out << " popq %rax\n";
+            out << " cvtsi2sd %rax, %xmm0\n";
         }
 
         switch (exp->op)
         {
         case PLUS_OP:
-            cout << " addsd %xmm1, %xmm0\n";
+            out << " addsd %xmm1, %xmm0\n";
             break;
         case MINUS_OP:
-            cout << " subsd %xmm1, %xmm0\n";
+            out << " subsd %xmm1, %xmm0\n";
             break;
         case MUL_OP:
-            cout << " mulsd %xmm1, %xmm0\n";
+            out << " mulsd %xmm1, %xmm0\n";
             break;
         case DIV_OP:
-            cout << " divsd %xmm1, %xmm0\n";
+            out << " divsd %xmm1, %xmm0\n";
             break;
         case LT_OP:
-            cout << " comisd %xmm1, %xmm0\n";
-            cout << " movl $0, %eax\n";
-            cout << " setb %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " comisd %xmm1, %xmm0\n";
+            out << " movl $0, %eax\n";
+            out << " setb %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case LE_OP:
-            cout << " comisd %xmm1, %xmm0\n";
-            cout << " movl $0, %eax\n";
-            cout << " setbe %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " comisd %xmm1, %xmm0\n";
+            out << " movl $0, %eax\n";
+            out << " setbe %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case GT_OP:
-            cout << " comisd %xmm1, %xmm0\n";
-            cout << " movl $0, %eax\n";
-            cout << " seta %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " comisd %xmm1, %xmm0\n";
+            out << " movl $0, %eax\n";
+            out << " seta %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case GE_OP:
-            cout << " comisd %xmm1, %xmm0\n";
-            cout << " movl $0, %eax\n";
-            cout << " setae %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " comisd %xmm1, %xmm0\n";
+            out << " movl $0, %eax\n";
+            out << " setae %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case EQ_OP:
-            cout << " comisd %xmm1, %xmm0\n";
-            cout << " movl $0, %eax\n";
-            cout << " sete %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " comisd %xmm1, %xmm0\n";
+            out << " movl $0, %eax\n";
+            out << " sete %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case NE_OP:
-            cout << " comisd %xmm1, %xmm0\n";
-            cout << " movl $0, %eax\n";
-            cout << " setne %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " comisd %xmm1, %xmm0\n";
+            out << " movl $0, %eax\n";
+            out << " setne %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         }
         return 2;
     }
     else
     {
-        cout << " movq %rax, %rcx\n";
-        cout << " popq %rax\n";
+        out << " movq %rax, %rcx\n";
+        out << " popq %rax\n";
 
         switch (exp->op)
         {
         case PLUS_OP:
-            cout << " addq %rcx, %rax\n";
+            out << " addq %rcx, %rax\n";
             break;
         case MINUS_OP:
-            cout << " subq %rcx, %rax\n";
+            out << " subq %rcx, %rax\n";
             break;
         case MUL_OP:
-            cout << " imulq %rcx, %rax\n";
+            out << " imulq %rcx, %rax\n";
             break;
         case DIV_OP:
-            cout << " cqto\n";
-            cout << " idivq %rcx\n";
+            out << " cqto\n";
+            out << " idivq %rcx\n";
             break;
         case MOD_OP:
-            cout << " cqto\n";
-            cout << " idivq %rcx\n";
-            cout << " movq %rdx, %rax\n";
+            out << " cqto\n";
+            out << " idivq %rcx\n";
+            out << " movq %rdx, %rax\n";
             break;
         case LT_OP:
-            cout << " cmpq %rcx, %rax\n";
-            cout << " movl $0, %eax\n";
-            cout << " setl %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " cmpq %rcx, %rax\n";
+            out << " movl $0, %eax\n";
+            out << " setl %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case LE_OP:
-            cout << " cmpq %rcx, %rax\n";
-            cout << " movl $0, %eax\n";
-            cout << " setle %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " cmpq %rcx, %rax\n";
+            out << " movl $0, %eax\n";
+            out << " setle %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case GT_OP:
-            cout << " cmpq %rcx, %rax\n";
-            cout << " movl $0, %eax\n";
-            cout << " setg %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " cmpq %rcx, %rax\n";
+            out << " movl $0, %eax\n";
+            out << " setg %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case GE_OP:
-            cout << " cmpq %rcx, %rax\n";
-            cout << " movl $0, %eax\n";
-            cout << " setge %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " cmpq %rcx, %rax\n";
+            out << " movl $0, %eax\n";
+            out << " setge %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case EQ_OP:
-            cout << " cmpq %rcx, %rax\n";
-            cout << " movl $0, %eax\n";
-            cout << " sete %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " cmpq %rcx, %rax\n";
+            out << " movl $0, %eax\n";
+            out << " sete %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case NE_OP:
-            cout << " cmpq %rcx, %rax\n";
-            cout << " movl $0, %eax\n";
-            cout << " setne %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " cmpq %rcx, %rax\n";
+            out << " movl $0, %eax\n";
+            out << " setne %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case AND_OP:
-            cout << " testq %rax, %rax\n";
-            cout << " setne %al\n";
-            cout << " testq %rcx, %rcx\n";
-            cout << " setne %cl\n";
-            cout << " andb %cl, %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " testq %rax, %rax\n";
+            out << " setne %al\n";
+            out << " testq %rcx, %rcx\n";
+            out << " setne %cl\n";
+            out << " andb %cl, %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         case OR_OP:
-            cout << " testq %rax, %rax\n";
-            cout << " setne %al\n";
-            cout << " testq %rcx, %rcx\n";
-            cout << " setne %cl\n";
-            cout << " orb %cl, %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " testq %rax, %rax\n";
+            out << " setne %al\n";
+            out << " testq %rcx, %rcx\n";
+            out << " setne %cl\n";
+            out << " orb %cl, %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         }
         return 1;
@@ -1923,13 +1923,13 @@ int GenCodeVisitor::visit(UnaryExp *exp)
     case UnaryExp::NEG_OP:
         if (type == 2)
         {
-            cout << " xorpd %xmm1, %xmm1\n";
-            cout << " subsd %xmm0, %xmm1\n";
-            cout << " movsd %xmm1, %xmm0\n";
+            out << " xorpd %xmm1, %xmm1\n";
+            out << " subsd %xmm0, %xmm1\n";
+            out << " movsd %xmm1, %xmm0\n";
         }
         else
         {
-            cout << " negq %rax\n";
+            out << " negq %rax\n";
         }
         break;
     case UnaryExp::POS_OP:
@@ -1937,17 +1937,17 @@ int GenCodeVisitor::visit(UnaryExp *exp)
     case UnaryExp::NOT_OP:
         if (type == 2)
         {
-            cout << " xorpd %xmm1, %xmm1\n";
-            cout << " comisd %xmm1, %xmm0\n";
-            cout << " setz %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " xorpd %xmm1, %xmm1\n";
+            out << " comisd %xmm1, %xmm0\n";
+            out << " setz %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         }
         else
         {
-            cout << " testq %rax, %rax\n";
-            cout << " setz %al\n";
-            cout << " movzbq %al, %rax\n";
+            out << " testq %rax, %rax\n";
+            out << " setz %al\n";
+            out << " movzbq %al, %rax\n";
             return 3;
         }
         break;
@@ -1962,23 +1962,20 @@ int GenCodeVisitor::visit(UnaryExp *exp)
             {
                 if (memoriaGlobal.count(id_exp->name))
                 {
-                    cout << " movsd " << id_exp->name << "(%rip), %xmm0\n";
-                    cout << " movsd .L_one(%rip), %xmm1\n";
+                    out << " movsd " << id_exp->name << "(%rip), %xmm0\n";
+                    out << " movsd .L_one(%rip), %xmm1\n";
                     if (exp->op == UnaryExp::PRE_INC_OP || exp->op == UnaryExp::POST_INC_OP)
-                        cout << " addsd %xmm1, %xmm0\n";
+                        out << " addsd %xmm1, %xmm0\n";
                     else
-                        cout << " subsd %xmm1, %xmm0\n";
-                    cout << " movsd %xmm0, " << id_exp->name << "(%rip)\n";
+                        out << " subsd %xmm1, %xmm0\n";
+                    out << " movsd %xmm0, " << id_exp->name << "(%rip)\n";
                 }
                 else
                 {
-                    cout << " movsd " << memoria[id_exp->name] << "(%rbp), %xmm0\n";
-                    cout << " movsd .L_one(%rip), %xmm1\n";
-                    if (exp->op == UnaryExp::PRE_INC_OP || exp->op == UnaryExp::POST_INC_OP)
-                        cout << " addsd %xmm1, %xmm0\n";
-                    else
-                        cout << " subsd %xmm1, %xmm0\n";
-                    cout << " movsd %xmm0, " << memoria[id_exp->name] << "(%rbp)\n";
+                    out << " movsd " << memoria[id_exp->name] << "(%rbp), %xmm0\n";
+                    out << " movsd .L_one(%rip), %xmm1\n";
+                    out << " addsd %xmm1, %xmm0\n";
+                    out << " movsd %xmm0, " << memoria[id_exp->name] << "(%rbp)\n";
                 }
                 return 2;
             }
@@ -1986,34 +1983,34 @@ int GenCodeVisitor::visit(UnaryExp *exp)
             {
                 if (memoriaGlobal.count(id_exp->name))
                 {
-                    cout << " movq " << id_exp->name << "(%rip), %rax\n";
+                    out << " movq " << id_exp->name << "(%rip), %rax\n";
                     if (exp->op == UnaryExp::PRE_INC_OP || exp->op == UnaryExp::POST_INC_OP)
                     {
-                        cout << " incq " << id_exp->name << "(%rip)\n";
+                        out << " incq " << id_exp->name << "(%rip)\n";
                         if (exp->op == UnaryExp::PRE_INC_OP)
-                            cout << " incq %rax\n";
+                            out << " incq %rax\n";
                     }
                     else
                     {
-                        cout << " decq " << id_exp->name << "(%rip)\n";
+                        out << " decq " << id_exp->name << "(%rip)\n";
                         if (exp->op == UnaryExp::PRE_DEC_OP)
-                            cout << " decq %rax\n";
+                            out << " decq %rax\n";
                     }
                 }
                 else
                 {
-                    cout << " movq " << memoria[id_exp->name] << "(%rbp), %rax\n";
+                    out << " movq " << memoria[id_exp->name] << "(%rbp), %rax\n";
                     if (exp->op == UnaryExp::PRE_INC_OP || exp->op == UnaryExp::POST_INC_OP)
                     {
-                        cout << " incq " << memoria[id_exp->name] << "(%rbp)\n";
+                        out << " incq " << memoria[id_exp->name] << "(%rbp)\n";
                         if (exp->op == UnaryExp::PRE_INC_OP)
-                            cout << " incq %rax\n";
+                            out << " incq %rax\n";
                     }
                     else
                     {
-                        cout << " decq " << memoria[id_exp->name] << "(%rbp)\n";
+                        out << " decq " << memoria[id_exp->name] << "(%rbp)\n";
                         if (exp->op == UnaryExp::PRE_DEC_OP)
-                            cout << " decq %rax\n";
+                            out << " decq %rax\n";
                     }
                 }
                 return 1;
@@ -2060,23 +2057,23 @@ int GenCodeVisitor::visit(FunctionCallExp *exp)
 
             if (type == 5)
             {
-                cout << " movq %rax, %rsi\n";
-                cout << " leaq print_str_fmt(%rip), %rdi\n";
-                cout << " movl $0, %eax\n";
-                cout << " call printf@PLT\n";
+                out << " movq %rax, %rsi\n";
+                out << " leaq print_str_fmt(%rip), %rdi\n";
+                out << " movl $0, %eax\n";
+                out << " call printf@PLT\n";
             }
             else if (type == 2)
             {
-                cout << " movq $1, %rax\n";
-                cout << " leaq print_float_fmt(%rip), %rdi\n";
-                cout << " call printf@PLT\n";
+                out << " movq $1, %rax\n";
+                out << " leaq print_float_fmt(%rip), %rdi\n";
+                out << " call printf@PLT\n";
             }
             else
             {
-                cout << " movq %rax, %rsi\n";
-                cout << " leaq print_fmt(%rip), %rdi\n";
-                cout << " movl $0, %eax\n";
-                cout << " call printf@PLT\n";
+                out << " movq %rax, %rsi\n";
+                out << " leaq print_fmt(%rip), %rdi\n";
+                out << " movl $0, %eax\n";
+                out << " call printf@PLT\n";
             }
         }
         return 0;
@@ -2095,37 +2092,37 @@ int GenCodeVisitor::visit(FunctionCallExp *exp)
             {
                 if (floatArgIndex != 0)
                 {
-                    cout << " movsd %xmm0, " << xmmRegs[floatArgIndex] << "\n";
+                    out << " movsd %xmm0, " << xmmRegs[floatArgIndex] << "\n";
                 }
                 floatArgIndex++;
             }
             else
             {
-                cout << " movsd %xmm0, -8(%rsp)\n";
-                cout << " subq $8, %rsp\n";
+                out << " movsd %xmm0, -8(%rsp)\n";
+                out << " subq $8, %rsp\n";
             }
         }
         else
         {
             if (intArgIndex < 6)
             {
-                cout << " movq %rax, " << argRegs[intArgIndex] << "\n";
+                out << " movq %rax, " << argRegs[intArgIndex] << "\n";
                 intArgIndex++;
             }
             else
             {
-                cout << " pushq %rax\n";
+                out << " pushq %rax\n";
             }
         }
     }
 
-    cout << " movl $" << min(floatArgIndex, 8) << ", %eax\n";
-    cout << " call " << exp->name << "\n";
+    out << " movl $" << min(floatArgIndex, 8) << ", %eax\n";
+    out << " call " << exp->name << "\n";
 
     if (exp->args.size() > 6)
     {
         int stackCleanup = (exp->args.size() - 6) * 8;
-        cout << " addq $" << stackCleanup << ", %rsp\n";
+        out << " addq $" << stackCleanup << ", %rsp\n";
     }
 
     return 0;
@@ -2149,27 +2146,27 @@ void GenCodeVisitor::visit(AssignStatement *stm)
             if (valueType == 2)
             {
                 if (memoriaGlobal.count(stm->id))
-                    cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
+                    out << " movsd %xmm0, " << stm->id << "(%rip)\n";
                 else
-                    cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
+                    out << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
             }
             else
             {
-                cout << " cvtsi2sd %rax, %xmm0\n";
+                out << " cvtsi2sd %rax, %xmm0\n";
                 if (memoriaGlobal.count(stm->id))
-                    cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
+                    out << " movsd %xmm0, " << stm->id << "(%rip)\n";
                 else
-                    cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
+                    out << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
             }
         }
         else
         {
             if (valueType == 2)
             {
-                cout << " cvttsd2si %xmm0, %rax\n";
+                out << " cvttsd2si %xmm0, %rax\n";
             }
             if (memoriaGlobal.count(stm->id))
-                cout << " movq %rax, " << stm->id << "(%rip)\n";
+                out << " movq %rax, " << stm->id << "(%rip)\n";
             else
             {
                 if (memoria.find(stm->id) == memoria.end())
@@ -2177,7 +2174,7 @@ void GenCodeVisitor::visit(AssignStatement *stm)
                     memoria[stm->id] = offset;
                     offset -= 8;
                 }
-                cout << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
+                out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
             }
         }
         break;
@@ -2192,86 +2189,86 @@ void GenCodeVisitor::visit(AssignStatement *stm)
         if (varType == 2)
         {
             if (memoriaGlobal.count(stm->id))
-                cout << " movsd " << stm->id << "(%rip), %xmm0\n";
+                out << " movsd " << stm->id << "(%rip), %xmm0\n";
             else
-                cout << " movsd " << memoria[stm->id] << "(%rbp), %xmm0\n";
+                out << " movsd " << memoria[stm->id] << "(%rbp), %xmm0\n";
 
-            cout << " movsd %xmm0, -8(%rsp)\n";
-            cout << " subq $8, %rsp\n";
+            out << " movsd %xmm0, -8(%rsp)\n";
+            out << " subq $8, %rsp\n";
 
             int rhsType = stm->rhs->accept(this);
 
             if (rhsType == 1)
             {
-                cout << " cvtsi2sd %rax, %xmm0\n";
+                out << " cvtsi2sd %rax, %xmm0\n";
             }
 
-            cout << " movsd (%rsp), %xmm1\n";
-            cout << " addq $8, %rsp\n";
+            out << " movsd (%rsp), %xmm1\n";
+            out << " addq $8, %rsp\n";
 
             switch (stm->op)
             {
             case AssignStatement::PLUS_ASSIGN_OP:
-                cout << " addsd %xmm0, %xmm1\n";
+                out << " addsd %xmm0, %xmm1\n";
                 break;
             case AssignStatement::MINUS_ASSIGN_OP:
-                cout << " subsd %xmm0, %xmm1\n";
+                out << " subsd %xmm0, %xmm1\n";
                 break;
             case AssignStatement::MUL_ASSIGN_OP:
-                cout << " mulsd %xmm0, %xmm1\n";
+                out << " mulsd %xmm0, %xmm1\n";
                 break;
             case AssignStatement::DIV_ASSIGN_OP:
-                cout << " divsd %xmm0, %xmm1\n";
+                out << " divsd %xmm0, %xmm1\n";
                 break;
             }
 
             if (memoriaGlobal.count(stm->id))
-                cout << " movsd %xmm1, " << stm->id << "(%rip)\n";
+                out << " movsd %xmm1, " << stm->id << "(%rip)\n";
             else
-                cout << " movsd %xmm1, " << memoria[stm->id] << "(%rbp)\n";
+                out << " movsd %xmm1, " << memoria[stm->id] << "(%rbp)\n";
         }
         else
         {
             if (memoriaGlobal.count(stm->id))
-                cout << " movq " << stm->id << "(%rip), %rax\n";
+                out << " movq " << stm->id << "(%rip), %rax\n";
             else
-                cout << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
-            cout << " pushq %rax\n";
+                out << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
+            out << " pushq %rax\n";
 
             int rhsType = stm->rhs->accept(this);
             if (rhsType == 2)
             {
-                cout << " cvttsd2si %xmm0, %rax\n";
+                out << " cvttsd2si %xmm0, %rax\n";
             }
-            cout << " movq %rax, %rcx\n";
-            cout << " popq %rax\n";
+            out << " movq %rax, %rcx\n";
+            out << " popq %rax\n";
 
             switch (stm->op)
             {
             case AssignStatement::PLUS_ASSIGN_OP:
-                cout << " addq %rcx, %rax\n";
+                out << " addq %rcx, %rax\n";
                 break;
             case AssignStatement::MINUS_ASSIGN_OP:
-                cout << " subq %rcx, %rax\n";
+                out << " subq %rcx, %rax\n";
                 break;
             case AssignStatement::MUL_ASSIGN_OP:
-                cout << " imulq %rcx, %rax\n";
+                out << " imulq %rcx, %rax\n";
                 break;
             case AssignStatement::DIV_ASSIGN_OP:
-                cout << " cqto\n";
-                cout << " idivq %rcx\n";
+                out << " cqto\n";
+                out << " idivq %rcx\n";
                 break;
             case AssignStatement::MOD_ASSIGN_OP:
-                cout << " cqto\n";
-                cout << " idivq %rcx\n";
-                cout << " movq %rdx, %rax\n";
+                out << " cqto\n";
+                out << " idivq %rcx\n";
+                out << " movq %rdx, %rax\n";
                 break;
             }
 
             if (memoriaGlobal.count(stm->id))
-                cout << " movq %rax, " << stm->id << "(%rip)\n";
+                out << " movq %rax, " << stm->id << "(%rip)\n";
             else
-                cout << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
+                out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
         }
         break;
     }
@@ -2282,25 +2279,25 @@ void GenCodeVisitor::visit(AssignStatement *stm)
         {
             if (memoriaGlobal.count(stm->id))
             {
-                cout << " movsd " << stm->id << "(%rip), %xmm0\n";
-                cout << " movsd .L_one(%rip), %xmm1\n";
-                cout << " addsd %xmm1, %xmm0\n";
-                cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
+                out << " movsd " << stm->id << "(%rip), %xmm0\n";
+                out << " movsd .L_one(%rip), %xmm1\n";
+                out << " addsd %xmm1, %xmm0\n";
+                out << " movsd %xmm0, " << stm->id << "(%rip)\n";
             }
             else
             {
-                cout << " movsd " << memoria[stm->id] << "(%rbp), %xmm0\n";
-                cout << " movsd .L_one(%rip), %xmm1\n";
-                cout << " addsd %xmm1, %xmm0\n";
-                cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
+                out << " movsd " << memoria[stm->id] << "(%rbp), %xmm0\n";
+                out << " movsd .L_one(%rip), %xmm1\n";
+                out << " addsd %xmm1, %xmm0\n";
+                out << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
             }
         }
         else
         {
             if (memoriaGlobal.count(stm->id))
-                cout << " incq " << stm->id << "(%rip)\n";
+                out << " incq " << stm->id << "(%rip)\n";
             else
-                cout << " incq " << memoria[stm->id] << "(%rbp)\n";
+                out << " incq " << memoria[stm->id] << "(%rbp)\n";
         }
         break;
 
@@ -2310,25 +2307,25 @@ void GenCodeVisitor::visit(AssignStatement *stm)
         {
             if (memoriaGlobal.count(stm->id))
             {
-                cout << " movsd " << stm->id << "(%rip), %xmm0\n";
-                cout << " movsd .L_one(%rip), %xmm1\n";
-                cout << " subsd %xmm1, %xmm0\n";
-                cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
+                out << " movsd " << stm->id << "(%rip), %xmm0\n";
+                out << " movsd .L_one(%rip), %xmm1\n";
+                out << " subsd %xmm1, %xmm0\n";
+                out << " movsd %xmm0, " << stm->id << "(%rip)\n";
             }
             else
             {
-                cout << " movsd " << memoria[stm->id] << "(%rbp), %xmm0\n";
-                cout << " movsd .L_one(%rip), %xmm1\n";
-                cout << " subsd %xmm1, %xmm0\n";
-                cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
+                out << " movsd " << memoria[stm->id] << "(%rbp), %xmm0\n";
+                out << " movsd .L_one(%rip), %xmm1\n";
+                out << " subsd %xmm1, %xmm0\n";
+                out << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
             }
         }
         else
         {
             if (memoriaGlobal.count(stm->id))
-                cout << " decq " << stm->id << "(%rip)\n";
+                out << " decq " << stm->id << "(%rip)\n";
             else
-                cout << " decq " << memoria[stm->id] << "(%rbp)\n";
+                out << " decq " << memoria[stm->id] << "(%rbp)\n";
         }
         break;
     }
@@ -2343,23 +2340,23 @@ void GenCodeVisitor::visit(PrintStatement *stm)
 
     if (type == 5)
     {
-        cout << " movq %rax, %rsi\n";
-        cout << " leaq print_str_fmt(%rip), %rdi\n";
-        cout << " movl $0, %eax\n";
-        cout << " call printf@PLT\n";
+        out << " movq %rax, %rsi\n";
+        out << " leaq print_str_fmt(%rip), %rdi\n";
+        out << " movl $0, %eax\n";
+        out << " call printf@PLT\n";
     }
     else if (type == 2)
     {
-        cout << " movq $1, %rax\n";
-        cout << " leaq print_float_fmt(%rip), %rdi\n";
-        cout << " call printf@PLT\n";
+        out << " movq $1, %rax\n";
+        out << " leaq print_float_fmt(%rip), %rdi\n";
+        out << " call printf@PLT\n";
     }
     else
     {
-        cout << " movq %rax, %rsi\n";
-        cout << " leaq print_fmt(%rip), %rdi\n";
-        cout << " movl $0, %eax\n";
-        cout << " call printf@PLT\n";
+        out << " movq %rax, %rsi\n";
+        out << " leaq print_fmt(%rip), %rdi\n";
+        out << " movl $0, %eax\n";
+        out << " call printf@PLT\n";
     }
 }
 
@@ -2412,23 +2409,23 @@ void GenCodeVisitor::visit(VarDec *stm)
             {
                 if (!entornoFuncion)
                 {
-                    cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
+                    out << " movsd %xmm0, " << stm->id << "(%rip)\n";
                 }
                 else
                 {
-                    cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
+                    out << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
                 }
             }
             else
             {
-                cout << " cvtsi2sd %rax, %xmm0\n";
+                out << " cvtsi2sd %rax, %xmm0\n";
                 if (!entornoFuncion)
                 {
-                    cout << " movsd %xmm0, " << stm->id << "(%rip)\n";
+                    out << " movsd %xmm0, " << stm->id << "(%rip)\n";
                 }
                 else
                 {
-                    cout << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
+                    out << " movsd %xmm0, " << memoria[stm->id] << "(%rbp)\n";
                 }
             }
         }
@@ -2436,15 +2433,15 @@ void GenCodeVisitor::visit(VarDec *stm)
         {
             if (valueType == 2)
             {
-                cout << " cvttsd2si %xmm0, %rax\n";
+                out << " cvttsd2si %xmm0, %rax\n";
             }
             if (!entornoFuncion)
             {
-                cout << " movq %rax, " << stm->id << "(%rip)\n";
+                out << " movq %rax, " << stm->id << "(%rip)\n";
             }
             else
             {
-                cout << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
+                out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
             }
         }
     }
@@ -2497,15 +2494,15 @@ void GenCodeVisitor::visit(IfStatement *stm)
 
     int label = labelcont++;
     stm->condition->accept(this);
-    cout << " cmpq $0, %rax\n";
-    cout << " je else_" << label << "\n";
+    out << " cmpq $0, %rax\n";
+    out << " je else_" << label << "\n";
     if (stm->thenStmt)
         stm->thenStmt->accept(this);
-    cout << " jmp endif_" << label << "\n";
-    cout << "else_" << label << ":\n";
+    out << " jmp endif_" << label << "\n";
+    out << "else_" << label << ":\n";
     if (stm->elseStmt)
         stm->elseStmt->accept(this);
-    cout << "endif_" << label << ":\n";
+    out << "endif_" << label << ":\n";
 }
 
 void GenCodeVisitor::visit(WhileStatement *stm)
@@ -2519,14 +2516,14 @@ void GenCodeVisitor::visit(WhileStatement *stm)
 
     labelStack.push(whileLabel);
 
-    cout << whileLabel << ":\n";
+    out << whileLabel << ":\n";
     stm->condition->accept(this);
-    cout << " cmpq $0, %rax\n";
-    cout << " je " << endLabel << "\n";
+    out << " cmpq $0, %rax\n";
+    out << " je " << endLabel << "\n";
     if (stm->stmt)
         stm->stmt->accept(this);
-    cout << " jmp " << whileLabel << "\n";
-    cout << endLabel << ":\n";
+    out << " jmp " << whileLabel << "\n";
+    out << endLabel << ":\n";
 
     labelStack.pop();
 }
@@ -2542,13 +2539,13 @@ void GenCodeVisitor::visit(DoWhileStatement *stm)
 
     labelStack.push(doLabel);
 
-    cout << doLabel << ":\n";
+    out << doLabel << ":\n";
     if (stm->stmt)
         stm->stmt->accept(this);
     stm->condition->accept(this);
-    cout << " cmpq $0, %rax\n";
-    cout << " jne " << doLabel << "\n";
-    cout << endLabel << ":\n";
+    out << " cmpq $0, %rax\n";
+    out << " jne " << doLabel << "\n";
+    out << endLabel << ":\n";
 
     labelStack.pop();
 }
@@ -2569,12 +2566,12 @@ void GenCodeVisitor::visit(ForStatement *stm)
         range->start->accept(this);
         int startOffset = offset;
         offset -= 8;
-        cout << " movq %rax, " << startOffset << "(%rbp)\n";
+        out << " movq %rax, " << startOffset << "(%rbp)\n";
 
         range->end->accept(this);
         int endOffset = offset;
         offset -= 8;
-        cout << " movq %rax, " << endOffset << "(%rbp)\n";
+        out << " movq %rax, " << endOffset << "(%rbp)\n";
 
         int stepOffset = 0;
         if (range->step != nullptr)
@@ -2582,7 +2579,7 @@ void GenCodeVisitor::visit(ForStatement *stm)
             range->step->accept(this);
             stepOffset = offset;
             offset -= 8;
-            cout << " movq %rax, " << stepOffset << "(%rbp)\n";
+            out << " movq %rax, " << stepOffset << "(%rbp)\n";
         }
 
         bool isNewVar = (memoria.find(stm->id) == memoria.end());
@@ -2593,57 +2590,57 @@ void GenCodeVisitor::visit(ForStatement *stm)
             setVariableType(stm->id, 1);
         }
 
-        cout << " movq " << startOffset << "(%rbp), %rax\n";
-        cout << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
-        cout << forLabel << ":\n";
-        cout << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
-        cout << " movq " << endOffset << "(%rbp), %rcx\n";
-        cout << " cmpq %rcx, %rax\n";
+        out << " movq " << startOffset << "(%rbp), %rax\n";
+        out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
+        out << forLabel << ":\n";
+        out << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
+        out << " movq " << endOffset << "(%rbp), %rcx\n";
+        out << " cmpq %rcx, %rax\n";
         if (range->until)
         {
-            cout << " jge " << endLabel << "\n";
+            out << " jge " << endLabel << "\n";
         }
         else if (range->downTo)
         {
-            cout << " jl " << endLabel << "\n";
+            out << " jl " << endLabel << "\n";
         }
         else
         {
-            cout << " jg " << endLabel << "\n";
+            out << " jg " << endLabel << "\n";
         }
         if (stm->stmt)
             stm->stmt->accept(this);
 
-        cout << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
+        out << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
 
         if (range->downTo)
         {
             if (range->step != nullptr)
             {
-                cout << " movq " << stepOffset << "(%rbp), %rcx\n";
-                cout << " subq %rcx, %rax\n";
+                out << " movq " << stepOffset << "(%rbp), %rcx\n";
+                out << " subq %rcx, %rax\n";
             }
             else
             {
-                cout << " decq %rax\n";
+                out << " decq %rax\n";
             }
         }
         else
         {
             if (range->step != nullptr)
             {
-                cout << " movq " << stepOffset << "(%rbp), %rcx\n";
-                cout << " addq %rcx, %rax\n";
+                out << " movq " << stepOffset << "(%rbp), %rcx\n";
+                out << " addq %rcx, %rax\n";
             }
             else
             {
-                cout << " incq %rax\n";
+                out << " incq %rax\n";
             }
         }
 
-        cout << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
-        cout << " jmp " << forLabel << "\n";
-        cout << endLabel << ":\n";
+        out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
+        out << " jmp " << forLabel << "\n";
+        out << endLabel << ":\n";
 
         labelStack.pop();
     }
@@ -2662,10 +2659,10 @@ void GenCodeVisitor::visit(FunctionDecl *stm)
     vector<string> argRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     vector<string> xmmRegs = {"%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7"};
 
-    cout << ".globl " << stm->name << "\n";
-    cout << stm->name << ":\n";
-    cout << " pushq %rbp\n";
-    cout << " movq %rsp, %rbp\n";
+    out << ".globl " << stm->name << "\n";
+    out << stm->name << ":\n";
+    out << " pushq %rbp\n";
+    out << " movq %rsp, %rbp\n";
 
     int intParamIndex = 0;
     int floatParamIndex = 0;
@@ -2682,7 +2679,7 @@ void GenCodeVisitor::visit(FunctionDecl *stm)
             setVariableType(paramName, 2);
             if (floatParamIndex < 8)
             {
-                cout << " movsd " << xmmRegs[floatParamIndex] << ", " << offset << "(%rbp)\n";
+                out << " movsd " << xmmRegs[floatParamIndex] << ", " << offset << "(%rbp)\n";
                 floatParamIndex++;
             }
         }
@@ -2698,7 +2695,7 @@ void GenCodeVisitor::visit(FunctionDecl *stm)
 
             if (intParamIndex < 6)
             {
-                cout << " movq " << argRegs[intParamIndex] << ", " << offset << "(%rbp)\n";
+                out << " movq " << argRegs[intParamIndex] << ", " << offset << "(%rbp)\n";
                 intParamIndex++;
             }
         }
@@ -2709,7 +2706,7 @@ void GenCodeVisitor::visit(FunctionDecl *stm)
     int reserva = -offset - 8;
     if (reserva > 0)
     {
-        cout << " subq $" << reserva << ", %rsp\n";
+        out << " subq $" << reserva << ", %rsp\n";
     }
 
     if (stm->body)
@@ -2717,7 +2714,7 @@ void GenCodeVisitor::visit(FunctionDecl *stm)
         stm->body->accept(this);
     }
 
-    cout << ".end_" << stm->name << ":\n";
+    out << ".end_" << stm->name << ":\n";
 
     if (stm->returnType == "Float")
     {
@@ -2726,8 +2723,8 @@ void GenCodeVisitor::visit(FunctionDecl *stm)
     {
     }
 
-    cout << " leave\n";
-    cout << " ret\n";
+    out << " leave\n";
+    out << " ret\n";
 
     entornoFuncion = false;
 }
@@ -2738,7 +2735,7 @@ void GenCodeVisitor::visit(ReturnStatement *stm)
     {
         int type = stm->expr->accept(this);
     }
-    cout << " jmp .end_" << nombreFuncion << "\n";
+    out << " jmp .end_" << nombreFuncion << "\n";
 }
 
 void GenCodeVisitor::visit(BreakStatement *stm)
@@ -2749,17 +2746,17 @@ void GenCodeVisitor::visit(BreakStatement *stm)
         if (currentLabel.find("while_") == 0)
         {
             string label = currentLabel.substr(6);
-            cout << " jmp endwhile_" << label << "\n";
+            out << " jmp endwhile_" << label << "\n";
         }
         else if (currentLabel.find("dowhile_") == 0)
         {
             string label = currentLabel.substr(8);
-            cout << " jmp enddowhile_" << label << "\n";
+            out << " jmp enddowhile_" << label << "\n";
         }
         else if (currentLabel.find("for_") == 0)
         {
             string label = currentLabel.substr(4);
-            cout << " jmp endfor_" << label << "\n";
+            out << " jmp endfor_" << label << "\n";
         }
     }
 }
@@ -2768,7 +2765,7 @@ void GenCodeVisitor::visit(ContinueStatement *stm)
 {
     if (!labelStack.empty())
     {
-        cout << " jmp " << labelStack.top() << "\n";
+        out << " jmp " << labelStack.top() << "\n";
     }
 }
 
