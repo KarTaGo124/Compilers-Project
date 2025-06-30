@@ -1,5 +1,10 @@
 # Compilador Kotlin - Implementación de Tipos String y Float
 
+| Alumno        | Correo   |
+|---------------|----------|
+| Jose Guillermo Galvez Pacori    | jose.galvez.p@utec.edu.pe  |
+| Isaac Emanuel Javier Simeón Sarmiento   | isaac.simeon@utec.edu.pe  |
+
 ## Introducción
 
 Este proyecto presenta la implementación de un compilador para el lenguaje Kotlin, haciendo enfoque en la implementación de tipos de datos **String** y **Float**. Si bien el compilador ya maneja estructuras de control tradicionales como bucles `for`, `while` y declaraciones condicionales, el núcleo de esta implementación se centra en la manipulación de cadenas de texto (string) y números decimales (float).
