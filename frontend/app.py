@@ -6,14 +6,48 @@ import sys
 import time
 import re
 
-# Importar streamlit-ace solo si está disponible
+def execute_assembly_simple(s_file_path):
+    """Ejecuta assembly usando ubuntu directamente"""
+    try:
+        if not os.path.exists(s_file_path):
+            return "❌ Error: No se encontró el archivo assembly (.s)", 1
+        
+        normalized_path = os.path.normpath(s_file_path)
+        drive_letter = normalized_path[0].lower()
+        path_without_drive = normalized_path[2:].replace('\\', '/')
+        wsl_path = f"/mnt/{drive_letter}{path_without_drive}"
+        
+        base_name = os.path.splitext(os.path.basename(s_file_path))[0]
+        wsl_dir = os.path.dirname(wsl_path)
+        
+        compile_cmd = f'cd "{wsl_dir}" && gcc -no-pie -m64 "{os.path.basename(wsl_path)}" -o "{base_name}_exec" 2>&1'
+        compile_result = subprocess.run(['ubuntu', 'run', compile_cmd], 
+                                       capture_output=True, text=True, timeout=30)
+        
+        if compile_result.returncode != 0:
+            return f"❌ Error de compilación:\n{compile_result.stdout}", compile_result.returncode
+        
+        exec_cmd = f'cd "{wsl_dir}" && "./{base_name}_exec" 2>&1'
+        exec_result = subprocess.run(['ubuntu', 'run', exec_cmd], 
+                                    capture_output=True, text=True, timeout=30)
+        
+        output = exec_result.stdout if exec_result.stdout else "(sin salida)"
+        
+        subprocess.run(['ubuntu', 'run', f'rm -f {wsl_dir}/{base_name}_exec'], capture_output=True, timeout=5)
+        
+        return output, exec_result.returncode
+        
+    except subprocess.TimeoutExpired:
+        return "❌ Timeout (30s)", 1
+    except Exception as e:
+        return f"❌ Error: {str(e)}", 1
+
 try:
     from streamlit_ace import st_ace
     ACE_AVAILABLE = True
 except ImportError:
     ACE_AVAILABLE = False
 
-# Configuración de la página
 st.set_page_config(
     page_title="Kotlin Compiler IDE",
     page_icon="⚡",
@@ -21,7 +55,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS personalizado
 st.markdown("""
 <style>
     .main-header {
@@ -112,7 +145,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 """, unsafe_allow_html=True)
 
-# Título principal
 st.markdown("""
 <div class="main-header">
     <h1>⚡ Kotlin Compiler IDE</h1>
@@ -120,16 +152,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Botones de información en la parte superior
-col_info1, col_info2 = st.columns(2)
-
-with col_info1:
-    info_btn = st.button("ℹ️ Información del Compilador", use_container_width=True)
-
-with col_info2:
-    help_btn = st.button("❓ Guía de Sintaxis", use_container_width=True)
-
-# Modal para información del compilador
 @st.dialog("ℹ️ Información del Compilador")
 def show_compiler_info():
     st.markdown("""
@@ -142,6 +164,7 @@ def show_compiler_info():
     - ✅ **Análisis Sintáctico**: Parser que construye el AST
     - ✅ **Print Visitor**: Reconstrucción del código fuente
     - ✅ **Eval Visitor**: Ejecución e interpretación del código
+    - ✅ **Generación de Código**: Código assembly x86-64
     
     **🎯 Funcionalidades soportadas:**
     - Variables y tipos de datos (`Int`, `Float`, `String`, `Boolean`)
@@ -160,6 +183,7 @@ def show_compiler_info():
     - **Parser**: Análisis sintáctico con gramática LL(1)
     - **AST**: Árbol de sintaxis abstracta
     - **Visitors**: Patrón Visitor para recorrido del AST
+    - **CodeGen**: Generador de código assembly x86-64
     
     **📚 Proyecto desarrollado en:**
     - Universidad de Ingeniería y Tecnología (UTEC)
@@ -170,7 +194,6 @@ def show_compiler_info():
     if st.button("✅ Cerrar", use_container_width=True):
         st.rerun()
 
-# Modal para guía de sintaxis
 @st.dialog("❓ Guía de Sintaxis Kotlin")
 def show_syntax_guide():
     st.markdown("""
@@ -179,7 +202,6 @@ def show_syntax_guide():
     Esta guía te ayudará a escribir código Kotlin compatible con nuestro compilador.
     """)
     
-    # Tabs para organizar la información
     tab1, tab2, tab3, tab4 = st.tabs(["🔤 Básico", "🔧 Funciones", "🔄 Control", "🏃 Avanzado"])
     
     with tab1:
@@ -324,14 +346,31 @@ def show_syntax_guide():
     if st.button("✅ Cerrar", use_container_width=True):
         st.rerun()
 
-# Mostrar modales cuando se presionen los botones
-if info_btn:
-    show_compiler_info()
+def load_test_file(test_number):
+    """Carga un archivo de test específico por número"""
+    test_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test")
+    txt_file = os.path.join(test_dir, f"test{test_number}.txt")
+    
+    if os.path.exists(txt_file):
+        try:
+            with open(txt_file, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            return f"// Error al cargar el archivo test{test_number}.txt: {str(e)}"
+    else:
+        return f"// No se encontró el archivo test{test_number}.txt"
 
-if help_btn:
-    show_syntax_guide()
+def read_assembly_file(file_path):
+    """Lee el archivo .s generado por el compilador"""
+    s_file = file_path.replace('.txt', '.s')
+    if os.path.exists(s_file):
+        try:
+            with open(s_file, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            return f"// Error al leer el archivo assembly: {str(e)}"
+    return ""
 
-# Inicializar estados de sesión
 if 'code_content' not in st.session_state:
     st.session_state.code_content = """fun main(): Unit {
     println("¡Hola Mundo!")
@@ -353,13 +392,15 @@ if 'last_print_visitor_output' not in st.session_state:
 if 'last_eval_visitor_output' not in st.session_state:
     st.session_state.last_eval_visitor_output = ""
 
+if 'last_gencode_output' not in st.session_state:
+    st.session_state.last_gencode_output = ""
+
 if 'last_error' not in st.session_state:
     st.session_state.last_error = ""
 
-if 'compilation_status' not in st.session_state:
-    st.session_state.compilation_status = ""
+if 'last_assembly_execution' not in st.session_state:
+    st.session_state.last_assembly_execution = ""
 
-# Layout principal en dos columnas
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -368,7 +409,6 @@ with col1:
     if ACE_AVAILABLE:
         st.markdown("**Editor Avanzado** - Usa Tab para indentar, Ctrl+Z para deshacer")
         
-        # Editor de código con ACE Editor
         code_input = st_ace(
             value=st.session_state.code_content,
             language='kotlin',
@@ -383,7 +423,6 @@ with col1:
     else:
         st.markdown("**Editor de Texto** - Usa Tab para indentar (4 espacios)")
         
-        # Editor de texto mejorado con JavaScript
         code_input = st.text_area(
             "Escribe tu código Kotlin aquí:",
             height=400,
@@ -393,11 +432,9 @@ with col1:
             placeholder="fun main(): Unit {\n    println(\"¡Hola Mundo!\")\n}"
         )
     
-    # Actualizar el estado de sesión solo si el contenido cambió
     if code_input != st.session_state.code_content:
         st.session_state.code_content = code_input
     
-    # Botones cerca del editor
     col_btn1, col_btn2, col_btn3 = st.columns(3)
     
     with col_btn1:
@@ -409,21 +446,20 @@ with col1:
     with col_btn3:
         download_btn = st.button("💾 Descargar Código", use_container_width=True)
     
-    # Lógica del botón limpiar
     if clear_btn:
         st.session_state.code_content = """fun main(): Unit {
-    println("¡Hola Mundo!")
 }"""
-        st.session_state.editor_key += 1  # Forzar recarga del editor
+        st.session_state.editor_key += 1  
         st.session_state.last_scanner_output = ""
         st.session_state.last_parser_output = ""
         st.session_state.last_print_visitor_output = ""
         st.session_state.last_eval_visitor_output = ""
+        st.session_state.last_gencode_output = ""
+        st.session_state.last_assembly_execution = ""
         st.session_state.last_error = ""
         st.session_state.compilation_status = ""
         st.rerun()
     
-    # Lógica del botón descargar
     if download_btn:
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         filename = f"codigo_kotlin_{timestamp}.kt"
@@ -435,77 +471,185 @@ with col1:
             use_container_width=True
         )
     
-    # Información del archivo
     st.info(f"📄 Líneas: {len(st.session_state.code_content.splitlines())} | Caracteres: {len(st.session_state.code_content)}")
 
 with col2:
     st.header("📊 Resultados de Compilación")
     
-    # Función para parsear la salida del compilador (LIMPIA)
     def parse_compiler_output(output):
         sections = {
             'tokens': '',
             'print_visitor': '',
-            'eval_visitor': ''
+            'eval_visitor': '',
+            'gencode': ''
         }
         
         lines = output.split('\n')
         current_section = None
         
         for line in lines:
-            # Detectar inicio de secciones
             if 'Starting Scanner Test:' in line:
                 current_section = 'tokens'
                 sections['tokens'] += line + '\n'
                 continue
             
-            # Filtrar líneas que no queremos mostrar
             if any(phrase in line for phrase in ['Iniciando Visitor:', 'Iniciando parsing:', 'Scanner exitoso', 'Parsing exitoso']):
                 continue
             
-            # Detectar inicio de Print Visitor
             if 'IMPRIMIR:' in line:
                 current_section = 'print_visitor'
                 continue
             
-            # Detectar inicio de Eval Visitor
             if 'EJECUTAR:' in line:
                 current_section = 'eval_visitor'
                 continue
             
-            # Agregar contenido a las secciones correspondientes
+            if 'GENERAR CODIGO ASSEMBLY:' in line:
+                current_section = 'gencode'
+                continue
+            
             if current_section == 'tokens' and line.strip():
                 if line.startswith('TOKEN(') or 'TOKEN(END)' in line:
                     sections['tokens'] += line + '\n'
             
             elif current_section == 'print_visitor' and line.strip():
-                # No incluir líneas que indican cambio de sección
-                if not line.startswith('EJECUTAR:'):
+                if not any(x in line for x in ['EJECUTAR:', 'GENERAR CODIGO ASSEMBLY:']):
                     sections['print_visitor'] += line + '\n'
             
             elif current_section == 'eval_visitor' and line.strip():
-                sections['eval_visitor'] += line + '\n'
+                if 'GENERAR CODIGO ASSEMBLY:' not in line:
+                    sections['eval_visitor'] += line + '\n'
+            
+            elif current_section == 'gencode' and line.strip():
+                sections['gencode'] += line + '\n'
         
         return sections
 
-    # Función para ejecutar el compilador
+    def execute_assembly(s_file_path):
+        """Compila y ejecuta un archivo .s usando gcc a través de WSL"""
+        try:
+            if not os.path.exists(s_file_path):
+                return "❌ Error: No se encontró el archivo assembly (.s)", 1
+            
+            try:
+                wsl_check = subprocess.run(
+                    ['wsl', '--version'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if wsl_check.returncode != 0:
+                    return "❌ Error: WSL no está disponible o no está configurado correctamente. \nPor favor instala WSL2 y una distribución de Linux.", 1
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                return "❌ Error: WSL no está instalado. \nInstala WSL2 desde Microsoft Store o usando 'wsl --install' en PowerShell como administrador.", 1
+            
+            normalized_path = os.path.normpath(s_file_path)
+            
+            wsl_path = normalized_path.replace('\\', '/').replace(':', '').lower()
+            wsl_path = f"/mnt/{wsl_path[0]}{wsl_path[1:]}"
+            
+            base_name = os.path.splitext(os.path.basename(s_file_path))[0]
+            wsl_dir = os.path.dirname(wsl_path)
+            wsl_executable = f"{wsl_dir}/{base_name}_exec"
+            
+            compile_command = [
+                'wsl', 'bash', '-c',
+                f'cd "{wsl_dir}" && gcc -no-pie -m64 "{os.path.basename(wsl_path)}" -o "{base_name}_exec" 2>&1'
+            ]
+            
+            compile_result = subprocess.run(
+                compile_command,
+                capture_output=True,
+                text=True,
+                timeout=45,
+                encoding='utf-8',
+                errors='replace'
+            )
+            
+            if compile_result.returncode != 0:
+                error_msg = f"❌ Error de compilación con gcc (WSL):\n\n"
+                error_msg += f"Comando ejecutado: gcc -no-pie -m64 {os.path.basename(wsl_path)} -o {base_name}_exec\n\n"
+                error_msg += f"Salida de error:\n{compile_result.stdout}\n"
+                if compile_result.stderr:
+                    error_msg += f"Error stderr:\n{compile_result.stderr}\n"
+                error_msg += "\n💡 Posibles soluciones:\n"
+                error_msg += "   • Verifica que el archivo .s tenga sintaxis válida\n"
+                error_msg += "   • Asegúrate de que WSL tenga gcc instalado: wsl sudo apt install build-essential\n"
+                error_msg += "   • El archivo debe tener punto de entrada _start para ejecutables"
+                return error_msg, compile_result.returncode
+            
+            exec_command = ['wsl', 'bash', '-c', f'cd "{wsl_dir}" && "./{base_name}_exec" 2>&1']
+            
+            exec_result = subprocess.run(
+                exec_command,
+                capture_output=True,
+                text=True,
+                timeout=45,
+                encoding='utf-8',
+                errors='replace'
+            )
+            
+            output = f"🔧 Comando de compilación: gcc -no-pie -m64 {os.path.basename(wsl_path)} -o {base_name}_exec\n"
+            output += f"📂 Directorio de trabajo: {wsl_dir}\n"
+            output += f"✅ Compilación exitosa\n\n"
+            output += f"🚀 Ejecutando: ./{base_name}_exec\n"
+            output += f"📤 Salida del programa:\n"
+            output += "="*50 + "\n"
+            
+            if exec_result.stdout:
+                output += exec_result.stdout
+            else:
+                output += "(sin salida)\n"
+            
+            output += "\n" + "="*50 + "\n"
+            
+            if exec_result.stderr:
+                output += f"⚠️ Errores/Advertencias:\n{exec_result.stderr}\n"
+            
+            if exec_result.returncode == 0:
+                output += f"✅ Programa ejecutado exitosamente (código de salida: 0)"
+            else:
+                output += f"❌ Programa terminó con código de salida: {exec_result.returncode}"
+                if exec_result.returncode == 139:
+                    output += " (Segmentation fault)"
+                elif exec_result.returncode == 1:
+                    output += " (Error general)"
+            
+            try:
+                subprocess.run(
+                    ['wsl', 'rm', f'{wsl_dir}/{base_name}_exec'],
+                    capture_output=True,
+                    timeout=10
+                )
+            except:
+                pass  
+            
+            return output, exec_result.returncode
+            
+        except subprocess.TimeoutExpired:
+            return "❌ Error: El programa tardó demasiado en ejecutarse (timeout de 45s). \nPosibles causas:\n  • WSL está iniciando por primera vez\n  • El programa tiene un bucle infinito\n  • Problema de red o sistema lento", 1
+        except Exception as e:
+            return f"❌ Error inesperado al ejecutar assembly: {str(e)}\n\n💡 Consejos:\n  • Verifica que WSL esté instalado y funcionando\n  • Intenta ejecutar 'wsl --version' en cmd para verificar\n  • Reinicia WSL con: wsl --shutdown", 1
     def run_compiler(code):
         try:
-            # Crear archivo temporal
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
+            project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            test_dir = os.path.join(project_dir, "test")
+            
+            if not os.path.exists(test_dir):
+                os.makedirs(test_dir)
+            
+            editor_file = os.path.join(test_dir, "editor_code.txt")
+            
+            with open(editor_file, 'w', encoding='utf-8') as f:
                 f.write(code)
-                temp_file = f.name
             
-            # Obtener la ruta del compilador
-            compiler_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "main.exe")
+            compiler_path = os.path.join(project_dir, "main.exe")
             
-            # Verificar que el compilador existe
             if not os.path.exists(compiler_path):
-                return "", "❌ Error: No se encontró el compilador main.exe en la carpeta raíz del proyecto", 1
+                return "", "❌ Error: No se encontró el compilador main.exe en la carpeta raíz del proyecto", 1, ""
             
-            # Ejecutar compilador
             result = subprocess.run(
-                [compiler_path, temp_file],
+                [compiler_path, editor_file],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -513,18 +657,16 @@ with col2:
                 errors='replace'
             )
             
-            # Limpiar archivo temporal
-            os.unlink(temp_file)
+            assembly_code = read_assembly_file(editor_file)
             
-            return result.stdout, result.stderr, result.returncode
+            return result.stdout, result.stderr, result.returncode, assembly_code
         
         except subprocess.TimeoutExpired:
-            return "", "❌ Error: El programa tardó demasiado en ejecutarse (timeout de 30s)", 1
+            return "", "❌ Error: El programa tardó demasiado en ejecutarse (timeout de 30s)", 1, ""
         except Exception as e:
-            return "", f"❌ Error al ejecutar el compilador: {str(e)}", 1
+            return "", f"❌ Error al ejecutar el compilador: {str(e)}", 1, ""
 
-    # Tabs para diferentes fases de compilación
-    tab1, tab2, tab3 = st.tabs(["🔍 Tokens", "🖨️ Print Visitor", "▶️ Eval Visitor"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔍 Tokens", "🖨️ Print Visitor", "▶️ Eval Visitor", "⚙️ Código Assembly", "🚀 Ejecutar Assembly"])
     
     with tab1:
         if st.session_state.last_scanner_output:
@@ -544,36 +686,63 @@ with col2:
         else:
             st.info("👆 Ejecuta el código para ver la salida del programa")
     
-    # Mostrar errores si los hay
+    with tab4:
+        if st.session_state.last_gencode_output:
+            st.code(st.session_state.last_gencode_output.strip(), language="nasm")
+        else:
+            st.info("👆 Ejecuta el código para ver el código assembly generado")
+    
+    with tab5:
+        if st.session_state.last_gencode_output:
+            project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            test_dir = os.path.join(project_dir, "test")
+            editor_s_file = os.path.join(test_dir, "editor_code.s")
+            
+            if os.path.exists(editor_s_file):
+                if st.button("🚀 Ejecutar Código Assembly del Editor", use_container_width=True, type="primary"):
+                    with st.spinner("🔧 Compilando y ejecutando..."):
+                        result, returncode = execute_assembly_simple(editor_s_file)
+                        st.session_state.last_assembly_execution = result
+                        st.rerun()
+                
+                if st.session_state.last_assembly_execution:
+                    st.code(st.session_state.last_assembly_execution, language="text")
+            else:
+                st.warning("⚠️ No se ha generado aún un archivo assembly del editor. Compila tu código primero.")
+        else:
+            st.info("👆 Ejecuta el código para generar assembly y luego poder ejecutarlo")
+    
     if st.session_state.last_error:
         st.error("🚨 Errores de Compilación:")
         st.code(st.session_state.last_error, language="text")
 
-# Lógica de los botones
 if run_btn:
     if not st.session_state.code_content.strip():
         st.error("❌ Por favor, escribe algún código antes de compilar")
     else:
         with st.spinner("⏳ Compilando y ejecutando..."):
-            # Mostrar progreso
             progress_bar = st.progress(0)
             progress_bar.progress(25)
             time.sleep(0.1)
             
-            stdout, stderr, returncode = run_compiler(st.session_state.code_content)
+            stdout, stderr, returncode, assembly_code = run_compiler(st.session_state.code_content)
             progress_bar.progress(100)
             time.sleep(0.1)
             progress_bar.empty()
             
             if returncode == 0:
-                # Parsear la salida del compilador
                 sections = parse_compiler_output(stdout)
                 
-                # Guardar resultados en el estado de sesión
                 st.session_state.last_scanner_output = sections['tokens']
-                st.session_state.last_parser_output = ""  # Ya no se usa por separado
+                st.session_state.last_parser_output = ""  
                 st.session_state.last_print_visitor_output = sections['print_visitor']
                 st.session_state.last_eval_visitor_output = sections['eval_visitor']
+                
+                if assembly_code.strip():
+                    st.session_state.last_gencode_output = assembly_code
+                else:
+                    st.session_state.last_gencode_output = sections['gencode']
+                
                 st.session_state.last_error = ""
                 
                 st.success("✅ Compilación y ejecución exitosa")
@@ -583,188 +752,140 @@ if run_btn:
                 st.error("❌ Error en la compilación")
                 st.rerun()
 
-# Sidebar con ejemplos únicamente
 with st.sidebar:
-    st.header("🎯 Ejemplos de Código")
+    st.header("🧪 Tests del Compilador")
     
-    st.markdown("Haz clic en cualquier ejemplo para cargarlo en el editor:")
+    st.markdown("Ingresa el número del test (1-25) para cargar:")
     
-    examples = {
-        "🌟 Hola Mundo": """fun main(): Unit {
-    println("¡Hola Mundo!")
-    println("Bienvenido al compilador Kotlin")
-}""",
-        
-        "🔢 Variables y Tipos": """fun main(): Unit {
-    var entero: Int = 42
-    val flotante: Float = 3.14159f
-    var texto: String = "Kotlin"
-    var booleano: Boolean = true
+    test_number = st.number_input(
+        "Número de test:",
+        min_value=1,
+        max_value=25,
+        value=1,
+        step=1,
+        key="test_number_input"
+    )
     
-    println("Entero: " + entero)
-    println("Flotante: " + flotante)
-    println("Texto: " + texto)
-    println("Booleano: " + booleano)
-}""",
-        
-        "➕ Operaciones Aritméticas": """fun main(): Unit {
-    var a: Int = 10
-    var b: Int = 3
-    
-    println("Suma: " + (a + b))
-    println("Resta: " + (a - b))
-    println("Multiplicación: " + (a * b))
-    println("División: " + (a / b))
-    println("Módulo: " + (a % b))
-    
-    a += 5
-    println("Después de += 5: " + a)
-}""",
-        
-        "🔄 Bucles y Rangos": """fun main(): Unit {
-    println("Bucle for con rango:")
-    for (i in 1..5) {
-        println("Número: " + i)
-    }
-    
-    println("Bucle while:")
-    var contador: Int = 0
-    while (contador < 3) {
-        println("Contador: " + contador)
-        contador++
-    }
-    
-    println("Rango con step:")
-    for (j in 2..10 step 2) {
-        println("Par: " + j)
-    }
-}""",
-        
-        "🎛️ Condicionales": """fun main(): Unit {
-    var edad: Int = 18
-    var nombre: String = "Juan"
-    
-    if (edad >= 18) {
-        println(nombre + " es mayor de edad")
-    } else {
-        println(nombre + " es menor de edad")
-    }
-    
-    if (edad >= 21 && nombre == "Juan") {
-        println("Juan puede votar")
-    }
-
-    var resultado: String
-
-    if (edad > 65) {
-        resultado = "Senior"
-    } else {
-        resultado = "Joven"
-    }
-
-    println("Categoría: " + resultado)
-}""",
-        
-        "🔧 Funciones": """fun sumar(a: Int, b: Int): Int {
-    return a + b
-}
-
-fun saludar(nombre: String): String {
-    return "Hola, " + nombre + "!"
-}
-
-fun esPar(numero: Int): Boolean {
-    return numero % 2 == 0
-}
-
-fun main(): Unit {
-    var resultado: Int = sumar(5, 3)
-    println("5 + 3 = " + resultado)
-    
-    var saludo: String = saludar("María")
-    println(saludo)
-    
-    if (esPar(4)) {
-        println("4 es par")
-    }
-}""",
-        
-        "🏃 Bloques Run": """fun main(): Unit {
-    var x: Int = 5
-    
-    println("Antes del bloque run: " + x)
-    
-    run {
-        var y: Int = 10
-        x = x + y
-        println("Dentro del bloque run: " + x)
-        println("Variable local y: " + y)
-    }
-    
-    println("Después del bloque run: " + x)
-    
-    var result : Int = run {
-        var temp : Int = x * 2
-        temp = temp * 5
-        temp
-    }
-
-    println("Resultado del bloque run: " + result)
-}""",
-        
-        "🧮 Ejemplo Complejo": """fun factorial(n: Int): Int {
-    if (n <= 1) {
-        return 1
-    } else {
-        return n * factorial(n - 1)
-    }
-}
-
-fun fibonacci(n: Int): Int {
-    if (n <= 1) {
-        return n
-    } else {
-        return fibonacci(n - 1) + fibonacci(n - 2)
-    }
-}
-
-fun main(): Unit {
-    println("=== CALCULADORA MATEMÁTICA ===")
-    
-    var numero: Int = 5
-    var fact: Int = factorial(numero)
-    println("Factorial de " + numero + " = " + fact)
-    
-    println("Serie Fibonacci:")
-    for (i in 0..7) {
-        var fib: Int = fibonacci(i)
-        println("F(" + i + ") = " + fib)
-    }
-    
-    println("Números primos hasta 20:")
-    for (num in 2..20) {
-        var esPrimo: Boolean = true
-        for (div in 2..(num-1)) {
-            if (num % div == 0) {
-                esPrimo = false
-            }
-        }
-        if (esPrimo) {
-            println(num + " es primo")
-        }
-    }
-}"""
-    }
-    
-    for name, code in examples.items():
-        if st.button(name, key=f"example_{name}", use_container_width=True):
-            st.session_state.code_content = code
-            st.session_state.editor_key += 1  # Forzar recarga del editor
+    if st.button(f"📄 Cargar Test {test_number}", use_container_width=True, type="primary"):
+        test_content = load_test_file(test_number)
+        if not test_content.startswith("//"):  
+            st.session_state.code_content = test_content
+            st.session_state.editor_key += 1  
+            st.success(f"✅ Test {test_number} cargado exitosamente")
             st.rerun()
+        else:
+            st.error(f"❌ {test_content}")
+        test_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test")
+        s_file = os.path.join(test_dir, f"test{test_number}.s")
+        
+        if os.path.exists(s_file):
+            with st.spinner(f"🔧 Compilando y ejecutando test{test_number}.s con gcc..."):
+                def execute_assembly_local(s_file_path):
+                    try:
+                        if not os.path.exists(s_file_path):
+                            return "❌ Error: No se encontró el archivo assembly (.s)", 1
+                        
+                        try:
+                            wsl_check = subprocess.run(['wsl', '--version'], capture_output=True, timeout=5)
+                            if wsl_check.returncode != 0:
+                                return "❌ Error: WSL no disponible", 1
+                        except:
+                            return "❌ Error: WSL no instalado", 1
+                        
+                        normalized_path = os.path.normpath(s_file_path)
+                        wsl_path = normalized_path.replace('\\', '/').replace(':', '').lower()
+                        wsl_path = f"/mnt/{wsl_path[0]}{wsl_path[1:]}"
+                        
+                        base_name = os.path.splitext(os.path.basename(s_file_path))[0]
+                        wsl_dir = os.path.dirname(wsl_path)
+                        
+                        compile_command = [
+                            'wsl', 'bash', '-c',
+                            f'cd "{wsl_dir}" && gcc -no-pie -m64 "{os.path.basename(wsl_path)}" -o "{base_name}_test" 2>&1'
+                        ]
+                        
+                        compile_result = subprocess.run(
+                            compile_command,
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
+                            encoding='utf-8',
+                            errors='replace'
+                        )
+                        
+                        if compile_result.returncode != 0:
+                            return f"❌ Error de compilación:\n{compile_result.stdout}", compile_result.returncode
+                        
+                        exec_command = ['wsl', 'bash', '-c', f'cd "{wsl_dir}" && "./{base_name}_test" 2>&1']
+                        exec_result = subprocess.run(
+                            exec_command,
+                            capture_output=True,
+                            text=True,
+                            timeout=30,
+                            encoding='utf-8',
+                            errors='replace'
+                        )
+                        
+                        output = f"🔧 Compilación: gcc -no-pie -m64 {os.path.basename(wsl_path)} -o {base_name}_test\n"
+                        output += f"✅ Compilación exitosa\n\n"
+                        output += f"🚀 Ejecutando test {test_number}\n"
+                        output += "="*40 + "\n"
+                        
+                        if exec_result.stdout:
+                            output += exec_result.stdout
+                        else:
+                            output += "(sin salida)\n"
+                        
+                        output += "\n" + "="*40 + "\n"
+                        
+                        if exec_result.returncode == 0:
+                            output += "✅ Ejecución exitosa"
+                        else:
+                            output += f"❌ Código de salida: {exec_result.returncode}"
+                        
+                        try:
+                            subprocess.run(['wsl', 'rm', f'{wsl_dir}/{base_name}_test'], capture_output=True, timeout=5)
+                        except:
+                            pass
+                        
+                        return output, exec_result.returncode
+                        
+                    except subprocess.TimeoutExpired:
+                        return "❌ Timeout (30s) - Programa muy lento o bucle infinito", 1
+                    except Exception as e:
+                        return f"❌ Error: {str(e)}", 1
+                
+                result, returncode = execute_assembly_local(s_file)
+                
+                with st.expander(f"Resultado de Ejecución del Test {test_number}", expanded=True):
+                    st.code(result, language="text")
+        else:
+            st.error(f"❌ No se encontró el archivo test{test_number}.s")
     
     st.markdown("---")
+    
+    st.markdown("### 🌟 Ejemplo básico")
+    if st.button("📄 Cargar Hola Mundo", use_container_width=True):
+        st.session_state.code_content = """fun main(): Unit {
+    println("¡Hola Mundo!")
+    println("Bienvenido al compilador Kotlin")
+}"""
+        st.session_state.editor_key += 1  
+        st.rerun()
+    
+    st.markdown("---")
+    
+    st.markdown("### 📚 Información")
+    
+    info_btn = st.button("ℹ️ Información del Compilador", use_container_width=True)
+    help_btn = st.button("❓ Guía de Sintaxis", use_container_width=True)
 
-# Footer
+if info_btn:
+    show_compiler_info()
+
+if help_btn:
+    show_syntax_guide()
+
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.9em;">
