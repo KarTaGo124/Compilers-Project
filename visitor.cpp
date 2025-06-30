@@ -1652,6 +1652,9 @@ void GenCodeVisitor::generar(Program *program)
     out << "print_fmt: .string \"%ld\\n\"\n";
     out << "print_str_fmt: .string \"%s\\n\"\n";
     out << "print_float_fmt: .string \"%.6g\\n\"\n";
+    out << "string_buffer: .space 512\n";  // Buffer principal para concatenación de strings
+    out << "string_buffer2: .space 512\n"; // Buffer secundario para concatenaciones anidadas
+    out << "stringBufferCounter: .long 0\n"; // Contador para alternar buffers
 
     for (auto it = memoriaGlobal.begin(); it != memoriaGlobal.end(); ++it)
     {
@@ -1662,6 +1665,7 @@ void GenCodeVisitor::generar(Program *program)
     out << ".align 8\n";
     out << ".L_zero: .double 0.0\n";
     out << ".L_one: .double 1.0\n";
+    out << ".str_concat_fmt: .string \"%s%s\"\n";
 
     for (auto it = floatConstants.begin(); it != floatConstants.end(); ++it)
     {
@@ -1754,6 +1758,32 @@ int GenCodeVisitor::visit(BinaryExp *exp)
     }
 
     int rightType = exp->right->accept(this);
+
+    // Manejar concatenación de strings
+    if ((leftType == 5 || rightType == 5) && exp->op == PLUS_OP)
+    {
+        // Implementación simple usando registros temporales
+        out << " movq %rax, %r8\n";    // segundo string en %r8
+        out << " popq %r9\n";          // primer string en %r9
+        
+        // Usar string_buffer
+        out << " leaq string_buffer(%rip), %rax\n";
+        
+        // strcpy(buffer, primer_string)
+        out << " movq %rax, %rdi\n";   // destino = buffer
+        out << " movq %r9, %rsi\n";    // primer string
+        out << " call strcpy@PLT\n";
+        
+        // strcat(buffer, segundo_string)  
+        out << " leaq string_buffer(%rip), %rdi\n"; // buffer
+        out << " movq %r8, %rsi\n";    // segundo string
+        out << " call strcat@PLT\n";    
+        
+        // Resultado en %rax
+        out << " leaq string_buffer(%rip), %rax\n";
+        
+        return 5; // retorna tipo string
+    }
 
     bool isFloat = (leftType == 2 || rightType == 2);
 
@@ -2005,12 +2035,14 @@ int GenCodeVisitor::visit(UnaryExp *exp)
                         out << " incq " << memoria[id_exp->name] << "(%rbp)\n";
                         if (exp->op == UnaryExp::PRE_INC_OP)
                             out << " incq %rax\n";
+                        // Para POST_INC_OP, NO incrementamos %rax, retornamos el valor original
                     }
                     else
                     {
                         out << " decq " << memoria[id_exp->name] << "(%rbp)\n";
                         if (exp->op == UnaryExp::PRE_DEC_OP)
                             out << " decq %rax\n";
+                        // Para POST_DEC_OP, NO decrementamos %rax, retornamos el valor original
                     }
                 }
                 return 1;
@@ -2072,7 +2104,7 @@ int GenCodeVisitor::visit(FunctionCallExp *exp)
             {
                 out << " movq %rax, %rsi\n";
                 out << " leaq print_fmt(%rip), %rdi\n";
-                out << " movl $0, %eax\n";
+                out << " xorl %eax, %eax\n";  // Limpiar %eax antes de printf
                 out << " call printf@PLT\n";
             }
         }
@@ -2125,6 +2157,20 @@ int GenCodeVisitor::visit(FunctionCallExp *exp)
         out << " addq $" << stackCleanup << ", %rsp\n";
     }
 
+    // Determinar el tipo de retorno de la función
+    if (functionReturnTypes.count(exp->name))
+    {
+        string returnType = functionReturnTypes[exp->name];
+        if (returnType == "Float")
+            return 2;
+        else if (returnType == "Boolean")
+            return 3;
+        else if (returnType == "String")
+            return 5;
+        else if (returnType == "Int")
+            return 1;
+    }
+
     return 0;
 }
 
@@ -2168,14 +2214,7 @@ void GenCodeVisitor::visit(AssignStatement *stm)
             if (memoriaGlobal.count(stm->id))
                 out << " movq %rax, " << stm->id << "(%rip)\n";
             else
-            {
-                if (memoria.find(stm->id) == memoria.end())
-                {
-                    memoria[stm->id] = offset;
-                    offset -= 8;
-                }
                 out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
-            }
         }
         break;
     }
@@ -2186,7 +2225,40 @@ void GenCodeVisitor::visit(AssignStatement *stm)
     case AssignStatement::DIV_ASSIGN_OP:
     case AssignStatement::MOD_ASSIGN_OP:
     {
-        if (varType == 2)
+        // Manejar concatenación de strings para +=
+        if (varType == 5 && stm->op == AssignStatement::PLUS_ASSIGN_OP)
+        {
+            // Cargar la variable string actual (primer string)
+            if (memoriaGlobal.count(stm->id))
+                out << " movq " << stm->id << "(%rip), %rdi\n";
+            else
+                out << " movq " << memoria[stm->id] << "(%rbp), %rdi\n";
+            
+            out << " pushq %rdi\n";  // guardar primer string
+            
+            // Evaluar el lado derecho (segundo string)
+            int rhsType = stm->rhs->accept(this);
+            out << " movq %rax, %rsi\n";  // segundo string en %rsi
+            out << " pushq %rsi\n";  // guardar segundo string
+            
+            // Usar sprintf para concatenar: sprintf(buffer, "%s%s", str1, str2)
+            out << " leaq string_buffer(%rip), %rdi\n";  // destino
+            out << " leaq .str_concat_fmt(%rip), %rsi\n";  // formato "%s%s"
+            out << " movq 8(%rsp), %rdx\n";  // primer string
+            out << " movq (%rsp), %rcx\n";   // segundo string
+            out << " movl $0, %eax\n";
+            out << " call sprintf@PLT\n";
+            
+            out << " addq $16, %rsp\n";  // limpiar stack
+            
+            // Guardar el resultado (puntero al buffer)
+            out << " leaq string_buffer(%rip), %rax\n";
+            if (memoriaGlobal.count(stm->id))
+                out << " movq %rax, " << stm->id << "(%rip)\n";
+            else
+                out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
+        }
+        else if (varType == 2)
         {
             if (memoriaGlobal.count(stm->id))
                 out << " movsd " << stm->id << "(%rip), %xmm0\n";
@@ -2510,22 +2582,25 @@ void GenCodeVisitor::visit(WhileStatement *stm)
     if (!stm)
         return;
 
-    int label = labelcont++;
-    string whileLabel = "while_" + to_string(label);
-    string endLabel = "endwhile_" + to_string(label);
+    int labelId = labelcont++;
 
-    labelStack.push(whileLabel);
-
-    out << whileLabel << ":\n";
+    out << ".while_start_" << labelId << ":" << endl;
+    
+    // Evaluar la condición
     stm->condition->accept(this);
-    out << " cmpq $0, %rax\n";
-    out << " je " << endLabel << "\n";
+    
+    // Si la condición es float, convertir a entero
+    // (En nuestro caso, las condiciones enteras están en %rax)
+    out << "    cmpq $0, %rax" << endl;
+    out << "    je .while_end_" << labelId << endl;
+    
+    // Ejecutar el cuerpo del bucle
     if (stm->stmt)
         stm->stmt->accept(this);
-    out << " jmp " << whileLabel << "\n";
-    out << endLabel << ":\n";
-
-    labelStack.pop();
+    
+    // Saltar de vuelta al inicio
+    out << "    jmp .while_start_" << labelId << endl;
+    out << ".while_end_" << labelId << ":" << endl;
 }
 
 void GenCodeVisitor::visit(DoWhileStatement *stm)
@@ -2533,19 +2608,30 @@ void GenCodeVisitor::visit(DoWhileStatement *stm)
     if (!stm)
         return;
 
-    int label = labelcont++;
-    string doLabel = "dowhile_" + to_string(label);
-    string endLabel = "enddowhile_" + to_string(label);
+    int labelId = labelcont++;
+    string doLabel = "dowhile_" + to_string(labelId);
+    string endLabel = "enddowhile_" + to_string(labelId);
 
     labelStack.push(doLabel);
 
-    out << doLabel << ":\n";
+    out << ".do_while_start_" << labelId << ":" << endl;
+    
+    // Ejecutar el cuerpo del bucle primero
     if (stm->stmt)
         stm->stmt->accept(this);
-    stm->condition->accept(this);
-    out << " cmpq $0, %rax\n";
-    out << " jne " << doLabel << "\n";
-    out << endLabel << ":\n";
+    
+    // Evaluar la condición
+    int conditionType = stm->condition->accept(this);
+    
+    // Manejar conversión de float a int si es necesario
+    if (conditionType == 2) { // Si es Float
+        out << "    cvttsd2si %xmm0, %rax" << endl;
+    }
+    
+    out << "    cmpq $0, %rax" << endl;
+    out << "    jne .do_while_start_" << labelId << endl;
+    
+    out << ".do_while_end_" << labelId << ":" << endl;
 
     labelStack.pop();
 }
@@ -2555,101 +2641,96 @@ void GenCodeVisitor::visit(ForStatement *stm)
     if (!stm)
         return;
 
+    // Verificamos si es que el rango es de tipo rango, si usa un id o un metodo de arrays
     if (RangeExp *range = dynamic_cast<RangeExp *>(stm->range))
     {
+        // Manejar for (i in range)
         int labelId = labelcont++;
-        string forLabel = "for_" + to_string(labelId);
-        string endLabel = "endfor_" + to_string(labelId);
 
-        labelStack.push(forLabel);
-
+        // Evaluar y guardar start y end
         range->start->accept(this);
-        int startOffset = offset;
         offset -= 8;
-        out << " movq %rax, " << startOffset << "(%rbp)\n";
+        int startOffset = offset;
+        out << "    movq %rax, " << startOffset << "(%rbp)" << endl;
 
         range->end->accept(this);
-        int endOffset = offset;
         offset -= 8;
-        out << " movq %rax, " << endOffset << "(%rbp)\n";
-
+        int endOffset = offset;
+        out << "    movq %rax, " << endOffset << "(%rbp)" << endl;
+        
+        int stepValue = 1;
         int stepOffset = 0;
-        if (range->step != nullptr)
-        {
-            range->step->accept(this);
+        if (range->step != nullptr) { // si es que estamos definiendo un step distinto de 1
+            range->step->accept(this); // genero el valor de ese step
+            offset -= 8; 
             stepOffset = offset;
-            offset -= 8;
-            out << " movq %rax, " << stepOffset << "(%rbp)\n";
+            out << "    movq %rax, " << stepOffset << "(%rbp)" << endl; // lo guardo en memoria
         }
-
-        bool isNewVar = (memoria.find(stm->id) == memoria.end());
-        if (isNewVar)
-        {
-            memoria[stm->id] = offset;
+        
+        // variable del loop
+        if (memoria.find(stm->id) == memoria.end()) {
             offset -= 8;
+            memoria[stm->id] = offset;
             setVariableType(stm->id, 1);
         }
-
-        out << " movq " << startOffset << "(%rbp), %rax\n";
-        out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
-        out << forLabel << ":\n";
-        out << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
-        out << " movq " << endOffset << "(%rbp), %rcx\n";
-        out << " cmpq %rcx, %rax\n";
-        if (range->until)
-        {
-            out << " jge " << endLabel << "\n";
+        
+        out << "    movq " << startOffset << "(%rbp), %rax" << endl;
+        out << "    movq %rax, " << memoria[stm->id] << "(%rbp)" << endl;
+        
+        out << ".for_start_" << labelId << ":" << endl;
+        
+        out << "    movq " << memoria[stm->id] << "(%rbp), %rax" << endl;
+        out << "    movq " << endOffset << "(%rbp), %rcx" << endl;
+        out << "    cmpq %rcx, %rax" << endl;
+        
+        if (range->until) {
+            // i < end
+            out << "    jge .for_end_" << labelId << endl;
+        } else if (range->downTo) {
+            // i >= end
+            out << "    jl .for_end_" << labelId << endl;
+        } else {
+            // i <= end (for .. to ..)
+            out << "    jg .for_end_" << labelId << endl;
         }
-        else if (range->downTo)
-        {
-            out << " jl " << endLabel << "\n";
-        }
-        else
-        {
-            out << " jg " << endLabel << "\n";
-        }
+        
         if (stm->stmt)
             stm->stmt->accept(this);
-
-        out << " movq " << memoria[stm->id] << "(%rbp), %rax\n";
-
-        if (range->downTo)
-        {
-            if (range->step != nullptr)
-            {
-                out << " movq " << stepOffset << "(%rbp), %rcx\n";
-                out << " subq %rcx, %rax\n";
+        
+        out << "    movq " << memoria[stm->id] << "(%rbp), %rax" << endl;
+        
+        if (range->downTo) {
+            // Para downTo: decrementar
+            if (range->step != nullptr) { // si es que tomamos un step distinto a uno, lo recuperamos del stepOffSet
+                out << "    movq " << stepOffset << "(%rbp), %rcx" << endl;
+                out << "    subq %rcx, %rax" << endl;
+            } else {
+                out << "    decq %rax" << endl;  // so reducimos en 1 como siempre
             }
-            else
-            {
-                out << " decq %rax\n";
-            }
-        }
-        else
-        {
-            if (range->step != nullptr)
-            {
-                out << " movq " << stepOffset << "(%rbp), %rcx\n";
-                out << " addq %rcx, %rax\n";
-            }
-            else
-            {
-                out << " incq %rax\n";
+        } else {
+            if (range->step != nullptr) { // misma logica, si es que tenemos un step que no es 1, lo recuperamos, sino añadimos 1
+                out << "    movq " << stepOffset << "(%rbp), %rcx" << endl;
+                out << "    addq %rcx, %rax" << endl;
+            } else {
+                out << "    incq %rax" << endl;
             }
         }
-
-        out << " movq %rax, " << memoria[stm->id] << "(%rbp)\n";
-        out << " jmp " << forLabel << "\n";
-        out << endLabel << ":\n";
-
-        labelStack.pop();
+        
+        out << "    movq %rax, " << memoria[stm->id] << "(%rbp)" << endl;
+        
+        out << "    jmp .for_start_" << labelId << endl;
+        out << ".for_end_" << labelId << ":" << endl;
     }
+    // Aquí se pueden agregar más casos para IdentifierExp y ArrayMethodExp si es necesario
 }
 
 void GenCodeVisitor::visit(FunctionDecl *stm)
 {
     if (!stm)
         return;
+
+    // Almacenar el tipo de retorno de la función
+    functionReturnTypes[stm->name] = stm->returnType;
 
     entornoFuncion = true;
     memoria.clear();
@@ -2734,8 +2815,10 @@ void GenCodeVisitor::visit(ReturnStatement *stm)
     if (stm && stm->expr)
     {
         int type = stm->expr->accept(this);
+        // El valor ya está en %rax para enteros o %xmm0 para floats
+        // No necesitamos hacer nada más, las convenciones de llamada se encargan
     }
-    out << " jmp .end_" << nombreFuncion << "\n";
+    out << "    jmp .end_" << nombreFuncion << endl;
 }
 
 void GenCodeVisitor::visit(BreakStatement *stm)
@@ -2746,17 +2829,17 @@ void GenCodeVisitor::visit(BreakStatement *stm)
         if (currentLabel.find("while_") == 0)
         {
             string label = currentLabel.substr(6);
-            out << " jmp endwhile_" << label << "\n";
+            out << "    jmp .while_end_" << label << endl;
         }
         else if (currentLabel.find("dowhile_") == 0)
         {
             string label = currentLabel.substr(8);
-            out << " jmp enddowhile_" << label << "\n";
+            out << "    jmp .do_while_end_" << label << endl;
         }
         else if (currentLabel.find("for_") == 0)
         {
             string label = currentLabel.substr(4);
-            out << " jmp endfor_" << label << "\n";
+            out << "    jmp .for_end_" << label << endl;
         }
     }
 }
@@ -2765,7 +2848,22 @@ void GenCodeVisitor::visit(ContinueStatement *stm)
 {
     if (!labelStack.empty())
     {
-        out << " jmp " << labelStack.top() << "\n";
+        string currentLabel = labelStack.top();
+        if (currentLabel.find("while_") == 0)
+        {
+            string label = currentLabel.substr(6);
+            out << "    jmp .while_start_" << label << endl;
+        }
+        else if (currentLabel.find("dowhile_") == 0)
+        {
+            string label = currentLabel.substr(8);
+            out << "    jmp .do_while_start_" << label << endl;
+        }
+        else if (currentLabel.find("for_") == 0)
+        {
+            string label = currentLabel.substr(4);
+            out << "    jmp .for_start_" << label << endl;
+        }
     }
 }
 

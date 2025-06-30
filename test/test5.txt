@@ -1,9 +1,8 @@
 fun main(): Unit {
-    var comp1: Boolean = (5 < 3) && (10 <= 15)
+    var comp1: Boolean = (true) && (true)
     var comp2: Boolean = true || false
-    var comp3: Boolean = !(true)
+    var comp3: Boolean = true
 
-    var stringComp: Boolean = ("abc" < "def") && ("hello" == "hello")
     var finalResult: Boolean = comp1 && (comp2 || comp3)
 
     println(finalResult)

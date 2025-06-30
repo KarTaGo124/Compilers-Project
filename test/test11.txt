@@ -1,18 +1,9 @@
 fun main(): Unit {
-    var outer: Int = 0
-    var total: Int = 0
-
-    while (outer < 3) {
-        var inner: Int = 0
-
-        while (inner < 2) {
-            total += outer + inner
-            inner++
+    for (i in 1..5) {
+        for(j in 1..5){
+            print(i)
+            print(j)
         }
-
-        outer++
     }
-    println(total)
-
-    println("Test control while-anidados completado")
+    println("Test ranges anidados completado")
 }

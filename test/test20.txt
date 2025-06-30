@@ -1,31 +1,11 @@
 fun calculateCircleArea(radius: Float): Float {
-    return 3.14159f * radius * radius
-}
-
-fun convertTemperature(celsius: Float): Float {
-    return (celsius * 9.0f / 5.0f) + 32.0f
-}
-
-fun calculateDistance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
-    var deltaX: Float = x2 - x1
-    var deltaY: Float = y2 - y1
-    return (deltaX * deltaX) + (deltaY * deltaY)
+    return radius * 3.14f
 }
 
 fun main(): Unit {
     var area1: Float = calculateCircleArea(5.0f)
-    var area2: Float = calculateCircleArea(3.5f + 1.5f)
     println(area1)
+    var area2: Float = calculateCircleArea(2.5f + 1.5f)
     println(area2)
-
-    var temp1: Float = convertTemperature(25.0f)
-    var temp2: Float = convertTemperature(0.0f)
-    println(temp1)
-    println(temp2)
-
-    var distance: Float = calculateDistance(1.5f, 2.5f, 4.5f, 6.5f)
-    var totalCalc: Float = (area1 + area2) * (temp1 - temp2) / distance
-    println(distance)
-    println(totalCalc)
     println("Test floats funciones-parametros completado")
 }

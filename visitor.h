@@ -164,9 +164,11 @@ private:
     std::unordered_map<string, int> memoria;
     std::unordered_map<string, int> variableTypes;
     std::unordered_map<double, string> floatConstants;
+    std::unordered_map<string, string> functionReturnTypes; // Para almacenar tipos de retorno de funciones
     std::stack<string> labelStack;
     int offset;
     int labelcont;
+    int stringBufferCounter; // Para manejar múltiples concatenaciones
     bool entornoFuncion;
     string nombreFuncion;
 
@@ -177,7 +179,7 @@ private:
     void processExpForFloatConstants(Exp *exp);
 
 public:
-    GenCodeVisitor(std::ostream &output) : out(output), offset(0), labelcont(1), entornoFuncion(false) {}
+    GenCodeVisitor(std::ostream &output) : out(output), offset(0), labelcont(1), stringBufferCounter(0), entornoFuncion(false) {}
 
     void generar(Program *program);
     int visit(BinaryExp *exp) override;

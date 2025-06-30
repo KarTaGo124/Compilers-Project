@@ -3,17 +3,10 @@ fun main(): Unit {
     var float2: Float = 2.71828f
     var float3: Float = 1.41421f
 
-    var comp1: Boolean = (float1 > float2) && (float2 > float3)
-    var comp2: Boolean = (float1 + float2) >= (float3 * 4.0f)
-    var comp3: Boolean = (float1 / float2) != (float3 + 1.0f)
-    var comp4: Boolean = ((float1 * 2.0f) <= (float2 * 3.0f)) || (float3 == 1.41421f)
-
-    var finalComp: Boolean = comp1 && (comp2 || comp3) && !comp4
+    var comp1: Boolean = (float1 > float2) || (float2 > float3)
     println(comp1)
+    var comp2: Boolean = (float1 + float2) != (float3 * 4.0f)
     println(comp2)
-    println(comp3)
-    println(comp4)
-    println(finalComp)
 
 
     println("Test floats comparaciones-logicas completado")

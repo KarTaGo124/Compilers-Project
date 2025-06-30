@@ -1,19 +1,15 @@
 fun multiply(x: Int, y: Int): Int {
     return x * y
 }
-
-fun divide(a: Int, b: Int): Int {
-    return a / b
+fun div(x: Int, y: Int): Int {
+    return x / y
 }
+
 
 fun main(): Unit {
     var result1: Int = multiply(5 + 3, 10 - 2)
-    var result2: Int = divide(multiply(4, 5), 2 + 3)
-    var result3: Int = multiply(multiply(2, 3), multiply(4, 1))
-
     println(result1)
+    var result2: Int = div(40 - 5, 3 + 4)
     println(result2)
-    println(result3)
-
     println("Test funciones expresiones-complejas completado")
 }

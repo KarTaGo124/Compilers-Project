@@ -8,5 +8,6 @@ fun main(): Unit {
 
     globalCounter = localCounter + 50
     println(globalCounter)
+
     println("Test declaracion globales locales completado")
 }

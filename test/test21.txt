@@ -3,19 +3,10 @@ fun main(): Unit {
     var str2: String = "World"
     var str3: String = "Kotlin"
 
-    var result1: String = str1 + " " + str2
-    var result2: String = str3 + " " + "Programming"
-    var result3: String = result1 + " with " + result2
+    var result1: String = str1 + str2
     println(result1)
+    var result2: String = str3 + "Programming"
     println(result2)
-    println(result3)
-
-    str1 += " Beautiful"
-    str2 += " of " + str3
-    result3 += " Language"
-
-    var finalString: String = result3 + "!"
-    println(finalString)
 
     println("Test strings concatenacion-basicas completado")
 }

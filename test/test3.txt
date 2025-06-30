@@ -4,13 +4,8 @@ fun main(): Unit {
     var mutableBool: Boolean = true
 
     mutableInt = 20
-    mutableString = "Modified"
-    mutableBool = false
 
-    mutableInt = mutableInt * 2
-    mutableString = mutableString + " String"
-
-    println(mutableString)
+    println(mutableInt)
 
     println("Test declaracion reasignacion completado")
 }

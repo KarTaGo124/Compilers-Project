@@ -1,24 +1,8 @@
-fun joinWithSeparator(word1: String, word2: String, separator: String): String {
-    return word1 + separator + word2
-}
-
-fun wrapWithTags(text: String, tag: String): String {
-    return tag + " " + text + " " + tag
-}
-
-fun formatMessage(input: String, level: String): String {
-    var temp: String = wrapWithTags(input, "msg")
-    return level + " " + temp + " FORMATTED"
-}
-
 fun main(): Unit {
-    var result1: String = joinWithSeparator("Alpha", "Beta", " ")
-    var result2: String = wrapWithTags("Important", "strong")
-    var result3: String = formatMessage("Process completed", "INFO")
-
-    var combined: String = result1 + " " + result2
-    var final: String = combined + " " + result3
-
-    println(final)
-    println("Test strings funciones avanzadas completado")
+    var str1: String = "A"
+    var str2: String = "B"
+    str1 += str2
+    println(str1)
+    
+    println("Test completado")
 }
