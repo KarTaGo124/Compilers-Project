@@ -66,12 +66,10 @@ int main(int argc, const char *argv[])
             cerr << "Error al crear el archivo de salida: " << outputFilename << endl;
             return 1;
         }
-        cout << "Generando codigo ensamblador en " << outputFilename << endl;
 
         GenCodeVisitor genCodeVisitor(outfile);
         genCodeVisitor.generar(program);
         outfile.close();
-        cout << "Archivo " << outputFilename << " generado exitosamente" << endl;
         cout << endl;
         delete program;
     }
