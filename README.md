@@ -117,7 +117,7 @@ public:
 };
 ```
 
-El constructor de `StringExp` recibe una referencia constante a un string, lo que garantiza eficiencia en la copia y evita modificaciones accidentales del valor durante la construcción. La función `accept` implementa el patrón Visitor, permitiendo que diferentes tipos de visitadores procesen esta expresión de manera polimórfica.
+El constructor de `StringExp` recibe una referencia constante a un string, lo que mejora la eficiencia en la copia y evita modificaciones accidentales del valor durante la construcción. La función `accept` implementa el patrón Visitor, permitiendo que diferentes tipos de visitadores procesen esta expresión de manera polimórfica.
 
 A nivel léxico, el scanner maneja los literales de cadena mediante el procesamiento de los caracteres entre comillas dobles. Este fragmento de código del scanner muestra cómo se reconocen las cadenas:
 
@@ -151,11 +151,11 @@ else if (c == '"')
 }
 ```
 
-Esta función maneja secuencias de escape básicas incrementando el puntero en 2 posiciones cuando encuentra una barra invertida, proporcionando soporte fundamental para caracteres especiales dentro de las cadenas. En el manejo de errores se ha incluido la detección de cadenas no terminadas retornando un token de error cuando no se encuentra la comilla de cierre.
+En el manejo de errores se ha incluido la detección de cadenas no terminadas retornando un token de error cuando no se encuentra la comilla de cierre.
 
 #### Tipo Float
 
-La implementación de números en coma flotante se centra en la clase **DecimalExp**, que maneja tanto la representación interna como las operaciones aritméticas de precisión flotante:
+La implementación de números float se centra en la clase **DecimalExp**, que maneja tanto la representación interna como las operaciones aritméticas de precisión float:
 
 ```cpp
 class DecimalExp : public Exp
@@ -245,9 +245,9 @@ else if (word == "String")
 }
 ```
 
-Esta implementación permite declaraciones como `var mensaje: String = "Hola mundo"`. El manejo de las operaciones de concatenación, comparación y asignación se realiza en los visitadores, que procesan los tokens `Token::STRING` generados por los literales de cadena.
+Esta implementación permite declaraciones como `var mensaje: String = "Hola mundo"`. El manejo de las operaciones de concatenación, comparación y asignación se realiza en los visitors, que procesan los tokens `Token::STRING` generados por los literales de cadena.
 
-Las funciones de impresión se manejan los strings a través de estos tokens especializados:
+Las funciones de impresión se manejan los strings a través de los siguientes tokens:
 
 ```cpp
 else if (word == "print")
@@ -342,6 +342,190 @@ public:
 
 Nuestro compilador también utiliza variables de estado (`lastType`, `lastInt`, `lastFloat`, `lastString`) para mantener el resultado de la última evaluación. Este diseño permite que las operaciones accedan al valor y tipo del resultado sin necesidad de estructuras de datos complejas.
 
+La implementación de los métodos visit para Float y String en el EvalVisitor son las siguientes:
+
+```cpp
+int EvalVisitor::visit(DecimalExp *exp)
+{
+    lastType = 2;         
+    lastFloat = exp->value;
+    return lastType;
+}
+
+int EvalVisitor::visit(StringExp *exp)
+{
+    lastType = 5;          
+    lastString = exp->value;
+    lastInt = 0;           
+    lastFloat = 0.0f;
+    return lastType;
+}
+```
+
+Las operaciones binarias manejan la conversión automática de tipos y la concatenación de strings. Para el operador PLUS_OP, si cualquiera de los operandos es string, se realiza concatenación automática:
+
+```cpp
+case PLUS_OP:
+    if (leftType == 5 || rightType == 5) {
+        lastType = 5;
+        string left_str, right_str;
+        
+        if (leftType == 5) left_str = leftString;
+        else if (leftType == 3) left_str = leftInt ? "true" : "false";
+        else if (leftType == 2) left_str = formatFloat(leftFloat);
+        else left_str = to_string(leftInt);
+        
+        if (rightType == 5) right_str = rightString;
+        else if (rightType == 3) right_str = rightInt ? "true" : "false";
+        else if (rightType == 2) right_str = formatFloat(rightFloat);
+        else right_str = to_string(rightInt);
+        
+        lastString = left_str + right_str;
+    }
+    else if (leftType == 2 || rightType == 2) {
+        lastType = 2;
+        lastFloat = (leftType == 2 ? leftFloat : leftInt) + 
+                   (rightType == 2 ? rightFloat : rightInt);
+    }
+    else if (leftType == 1 && rightType == 1) {
+        lastType = 1;
+        lastInt = leftInt + rightInt;
+    }
+    break;
+```
+
+#### GenCodeVisitor - Generación de Código Assembly
+
+El `GenCodeVisitor` en nuestro visitor.cpp es el responsable de convertir el AST a código assembly. Para los tipos Float y String, implementa estrategias específicas de generación de código que aprovechan las características de la arquitectura objetivo.
+
+##### Generación de Código para Float
+
+La generación de código para números flotantes utiliza registros XMM y la sección `.rodata` para almacenar constantes:
+
+```cpp
+int GenCodeVisitor::visit(DecimalExp *exp)
+{
+    string label = getFloatConstantLabel(exp->value);
+    out << " movsd " << label << "(%rip), %xmm0\n";
+    return 2;
+}
+```
+
+El sistema de gestión de constantes flotantes evita la duplicación mediante un mapa de constantes:
+
+```cpp
+string GenCodeVisitor::getFloatConstantLabel(double value)
+{
+    for (auto it = floatConstants.begin(); it != floatConstants.end(); ++it) {
+        if (it->first == value) {
+            return it->second;
+        }
+    }
+    string label = ".float_" + to_string(floatConstants.size());
+    floatConstants[value] = label;
+    return label;
+}
+```
+
+Las operaciones aritméticas con floats utilizamos instrucciones SSE2:
+
+```cpp
+case PLUS_OP:
+    out << " addsd %xmm1, %xmm0\n";
+    break;
+case MUL_OP:
+    out << " mulsd %xmm1, %xmm0\n";
+    break;
+case DIV_OP:
+    out << " divsd %xmm1, %xmm0\n";
+    break;
+```
+
+Para operaciones mixtas (int + float), se implementa una conversión automática:
+
+```cpp
+if (leftType == 2 || rightType == 2) {
+    if (rightType == 2) {
+        out << " movsd %xmm0, %xmm1\n";
+    } else {
+        out << " cvtsi2sd %rax, %xmm1\n";
+    }
+    
+    if (leftType == 2) {
+        out << " movsd (%rsp), %xmm0\n";
+    } else {
+        out << " popq %rax\n";
+        out << " cvtsi2sd %rax, %xmm0\n";
+    }
+}
+```
+
+##### Generación de Código para String
+
+Los strings se almacenan en la sección `.rodata` con etiquetas únicas:
+
+```cpp
+int GenCodeVisitor::visit(StringExp *exp)
+{
+    static int stringCount = 0;
+    string label = "str_" + to_string(stringCount++);
+    out << " .section .rodata\n";
+    out << label << ": .string \"" << exp->value << "\"\n";
+    out << " .text\n";
+    out << " leaq " << label << "(%rip), %rax\n";
+    return 5;
+}
+```
+
+La concatenación de strings utiliza las funciones de biblioteca estándar `strcpy` y `strcat`:
+
+```cpp
+if ((leftType == 5 || rightType == 5) && exp->op == PLUS_OP) {
+    out << " movq %rax, %r8\n";         
+    out << " popq %r9\n";              
+    
+    out << " leaq string_buffer(%rip), %rax\n";
+    
+    // Copia el primer string
+    out << " movq %rax, %rdi\n";        
+    out << " movq %r9, %rsi\n";         
+    out << " call strcpy@PLT\n";
+    
+    // Concatena el segundo string
+    out << " leaq string_buffer(%rip), %rdi\n";
+    out << " movq %r8, %rsi\n";        
+    out << " call strcat@PLT\n";
+    
+    out << " leaq string_buffer(%rip), %rax\n"; 
+    return 5;
+}
+```
+
+El generador de código también maneja comparaciones de floats utilizando la instrucción `comisd`:
+
+```cpp
+case EQ_OP:
+    out << " comisd %xmm1, %xmm0\n";    
+    out << " movl $0, %eax\n";
+    out << " sete %al\n";
+    out << " movzbq %al, %rax\n";
+    return 3;
+```
+
+### 4. Estructura de Datos y Memoria
+
+El compilador utiliza buffers estáticos para el manejo de strings y mapas para la gestión de constantes flotantes:
+
+```cpp
+string_buffer: .space 512
+string_buffer2: .space 512
+stringBufferCounter: .long 0
+
+.align 8
+.float_0: .double 3.14159
+.float_1: .double 2.71828
+```
+
 ## Conclusión
 
-La implementación exitosa de tipos String y Float en este compilador demuestra la flexibilidad del diseño arquitectónico empleado. El uso del patrón Visitor permite una gestión eficiente de los diferentes tipos de datos, manteniendo la claridad del código y facilitando futuras extensiones del lenguaje.
+La implementación exitosa de tipos String y Float en este compilador demuestra la flexibilidad del diseño empleado. El uso de Visitor.cpp y visitor.h permite una gestión eficiente de los diferentes tipos de datos, manteniendo la claridad del código en lenguaje Kotlin
