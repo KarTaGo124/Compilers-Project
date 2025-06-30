@@ -188,7 +188,7 @@ if (isdigit(c))
     {
         if (current + 1 < input.length() && input[current + 1] == '.')
         {
-            is_int = true;  // Detecta operador de rango ".."
+            is_int = true; 
         }
         else
         {
