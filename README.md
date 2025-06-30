@@ -131,7 +131,7 @@ else if (c == '"')
     {
         if (input[current] == '\\' && current + 1 < input.length())
         {
-            current += 2;  // Manejo básico de escape sequences
+            current += 2;
         }
         else
         {
