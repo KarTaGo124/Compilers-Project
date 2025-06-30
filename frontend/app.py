@@ -6,42 +6,6 @@ import sys
 import time
 import re
 
-def execute_assembly_simple(s_file_path):
-    """Ejecuta assembly usando ubuntu directamente"""
-    try:
-        if not os.path.exists(s_file_path):
-            return "❌ Error: No se encontró el archivo assembly (.s)", 1
-        
-        normalized_path = os.path.normpath(s_file_path)
-        drive_letter = normalized_path[0].lower()
-        path_without_drive = normalized_path[2:].replace('\\', '/')
-        wsl_path = f"/mnt/{drive_letter}{path_without_drive}"
-        
-        base_name = os.path.splitext(os.path.basename(s_file_path))[0]
-        wsl_dir = os.path.dirname(wsl_path)
-        
-        compile_cmd = f'cd "{wsl_dir}" && gcc -no-pie -m64 "{os.path.basename(wsl_path)}" -o "{base_name}_exec" 2>&1'
-        compile_result = subprocess.run(['ubuntu', 'run', compile_cmd], 
-                                       capture_output=True, text=True, timeout=30)
-        
-        if compile_result.returncode != 0:
-            return f"❌ Error de compilación:\n{compile_result.stdout}", compile_result.returncode
-        
-        exec_cmd = f'cd "{wsl_dir}" && "./{base_name}_exec" 2>&1'
-        exec_result = subprocess.run(['ubuntu', 'run', exec_cmd], 
-                                    capture_output=True, text=True, timeout=30)
-        
-        output = exec_result.stdout if exec_result.stdout else "(sin salida)"
-        
-        subprocess.run(['ubuntu', 'run', f'rm -f {wsl_dir}/{base_name}_exec'], capture_output=True, timeout=5)
-        
-        return output, exec_result.returncode
-        
-    except subprocess.TimeoutExpired:
-        return "❌ Timeout (30s)", 1
-    except Exception as e:
-        return f"❌ Error: {str(e)}", 1
-
 try:
     from streamlit_ace import st_ace
     ACE_AVAILABLE = True
@@ -398,9 +362,6 @@ if 'last_gencode_output' not in st.session_state:
 if 'last_error' not in st.session_state:
     st.session_state.last_error = ""
 
-if 'last_assembly_execution' not in st.session_state:
-    st.session_state.last_assembly_execution = ""
-
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -455,7 +416,6 @@ with col1:
         st.session_state.last_print_visitor_output = ""
         st.session_state.last_eval_visitor_output = ""
         st.session_state.last_gencode_output = ""
-        st.session_state.last_assembly_execution = ""
         st.session_state.last_error = ""
         st.session_state.compilation_status = ""
         st.rerun()
@@ -525,111 +485,6 @@ with col2:
         
         return sections
 
-    def execute_assembly(s_file_path):
-        """Compila y ejecuta un archivo .s usando gcc a través de WSL"""
-        try:
-            if not os.path.exists(s_file_path):
-                return "❌ Error: No se encontró el archivo assembly (.s)", 1
-            
-            try:
-                wsl_check = subprocess.run(
-                    ['wsl', '--version'],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                if wsl_check.returncode != 0:
-                    return "❌ Error: WSL no está disponible o no está configurado correctamente. \nPor favor instala WSL2 y una distribución de Linux.", 1
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                return "❌ Error: WSL no está instalado. \nInstala WSL2 desde Microsoft Store o usando 'wsl --install' en PowerShell como administrador.", 1
-            
-            normalized_path = os.path.normpath(s_file_path)
-            
-            wsl_path = normalized_path.replace('\\', '/').replace(':', '').lower()
-            wsl_path = f"/mnt/{wsl_path[0]}{wsl_path[1:]}"
-            
-            base_name = os.path.splitext(os.path.basename(s_file_path))[0]
-            wsl_dir = os.path.dirname(wsl_path)
-            wsl_executable = f"{wsl_dir}/{base_name}_exec"
-            
-            compile_command = [
-                'wsl', 'bash', '-c',
-                f'cd "{wsl_dir}" && gcc -no-pie -m64 "{os.path.basename(wsl_path)}" -o "{base_name}_exec" 2>&1'
-            ]
-            
-            compile_result = subprocess.run(
-                compile_command,
-                capture_output=True,
-                text=True,
-                timeout=45,
-                encoding='utf-8',
-                errors='replace'
-            )
-            
-            if compile_result.returncode != 0:
-                error_msg = f"❌ Error de compilación con gcc (WSL):\n\n"
-                error_msg += f"Comando ejecutado: gcc -no-pie -m64 {os.path.basename(wsl_path)} -o {base_name}_exec\n\n"
-                error_msg += f"Salida de error:\n{compile_result.stdout}\n"
-                if compile_result.stderr:
-                    error_msg += f"Error stderr:\n{compile_result.stderr}\n"
-                error_msg += "\n💡 Posibles soluciones:\n"
-                error_msg += "   • Verifica que el archivo .s tenga sintaxis válida\n"
-                error_msg += "   • Asegúrate de que WSL tenga gcc instalado: wsl sudo apt install build-essential\n"
-                error_msg += "   • El archivo debe tener punto de entrada _start para ejecutables"
-                return error_msg, compile_result.returncode
-            
-            exec_command = ['wsl', 'bash', '-c', f'cd "{wsl_dir}" && "./{base_name}_exec" 2>&1']
-            
-            exec_result = subprocess.run(
-                exec_command,
-                capture_output=True,
-                text=True,
-                timeout=45,
-                encoding='utf-8',
-                errors='replace'
-            )
-            
-            output = f"🔧 Comando de compilación: gcc -no-pie -m64 {os.path.basename(wsl_path)} -o {base_name}_exec\n"
-            output += f"📂 Directorio de trabajo: {wsl_dir}\n"
-            output += f"✅ Compilación exitosa\n\n"
-            output += f"🚀 Ejecutando: ./{base_name}_exec\n"
-            output += f"📤 Salida del programa:\n"
-            output += "="*50 + "\n"
-            
-            if exec_result.stdout:
-                output += exec_result.stdout
-            else:
-                output += "(sin salida)\n"
-            
-            output += "\n" + "="*50 + "\n"
-            
-            if exec_result.stderr:
-                output += f"⚠️ Errores/Advertencias:\n{exec_result.stderr}\n"
-            
-            if exec_result.returncode == 0:
-                output += f"✅ Programa ejecutado exitosamente (código de salida: 0)"
-            else:
-                output += f"❌ Programa terminó con código de salida: {exec_result.returncode}"
-                if exec_result.returncode == 139:
-                    output += " (Segmentation fault)"
-                elif exec_result.returncode == 1:
-                    output += " (Error general)"
-            
-            try:
-                subprocess.run(
-                    ['wsl', 'rm', f'{wsl_dir}/{base_name}_exec'],
-                    capture_output=True,
-                    timeout=10
-                )
-            except:
-                pass  
-            
-            return output, exec_result.returncode
-            
-        except subprocess.TimeoutExpired:
-            return "❌ Error: El programa tardó demasiado en ejecutarse (timeout de 45s). \nPosibles causas:\n  • WSL está iniciando por primera vez\n  • El programa tiene un bucle infinito\n  • Problema de red o sistema lento", 1
-        except Exception as e:
-            return f"❌ Error inesperado al ejecutar assembly: {str(e)}\n\n💡 Consejos:\n  • Verifica que WSL esté instalado y funcionando\n  • Intenta ejecutar 'wsl --version' en cmd para verificar\n  • Reinicia WSL con: wsl --shutdown", 1
     def run_compiler(code):
         try:
             project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -666,7 +521,7 @@ with col2:
         except Exception as e:
             return "", f"❌ Error al ejecutar el compilador: {str(e)}", 1, ""
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔍 Tokens", "🖨️ Print Visitor", "▶️ Eval Visitor", "⚙️ Código Assembly", "🚀 Ejecutar Assembly"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🔍 Tokens", "🖨️ Print Visitor", "▶️ Eval Visitor", "⚙️ Código Assembly"])
     
     with tab1:
         if st.session_state.last_scanner_output:
@@ -691,26 +546,6 @@ with col2:
             st.code(st.session_state.last_gencode_output.strip(), language="nasm")
         else:
             st.info("👆 Ejecuta el código para ver el código assembly generado")
-    
-    with tab5:
-        if st.session_state.last_gencode_output:
-            project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            test_dir = os.path.join(project_dir, "test")
-            editor_s_file = os.path.join(test_dir, "editor_code.s")
-            
-            if os.path.exists(editor_s_file):
-                if st.button("🚀 Ejecutar Código Assembly del Editor", use_container_width=True, type="primary"):
-                    with st.spinner("🔧 Compilando y ejecutando..."):
-                        result, returncode = execute_assembly_simple(editor_s_file)
-                        st.session_state.last_assembly_execution = result
-                        st.rerun()
-                
-                if st.session_state.last_assembly_execution:
-                    st.code(st.session_state.last_assembly_execution, language="text")
-            else:
-                st.warning("⚠️ No se ha generado aún un archivo assembly del editor. Compila tu código primero.")
-        else:
-            st.info("👆 Ejecuta el código para generar assembly y luego poder ejecutarlo")
     
     if st.session_state.last_error:
         st.error("🚨 Errores de Compilación:")
@@ -775,92 +610,6 @@ with st.sidebar:
             st.rerun()
         else:
             st.error(f"❌ {test_content}")
-        test_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test")
-        s_file = os.path.join(test_dir, f"test{test_number}.s")
-        
-        if os.path.exists(s_file):
-            with st.spinner(f"🔧 Compilando y ejecutando test{test_number}.s con gcc..."):
-                def execute_assembly_local(s_file_path):
-                    try:
-                        if not os.path.exists(s_file_path):
-                            return "❌ Error: No se encontró el archivo assembly (.s)", 1
-                        
-                        try:
-                            wsl_check = subprocess.run(['wsl', '--version'], capture_output=True, timeout=5)
-                            if wsl_check.returncode != 0:
-                                return "❌ Error: WSL no disponible", 1
-                        except:
-                            return "❌ Error: WSL no instalado", 1
-                        
-                        normalized_path = os.path.normpath(s_file_path)
-                        wsl_path = normalized_path.replace('\\', '/').replace(':', '').lower()
-                        wsl_path = f"/mnt/{wsl_path[0]}{wsl_path[1:]}"
-                        
-                        base_name = os.path.splitext(os.path.basename(s_file_path))[0]
-                        wsl_dir = os.path.dirname(wsl_path)
-                        
-                        compile_command = [
-                            'wsl', 'bash', '-c',
-                            f'cd "{wsl_dir}" && gcc -no-pie -m64 "{os.path.basename(wsl_path)}" -o "{base_name}_test" 2>&1'
-                        ]
-                        
-                        compile_result = subprocess.run(
-                            compile_command,
-                            capture_output=True,
-                            text=True,
-                            timeout=30,
-                            encoding='utf-8',
-                            errors='replace'
-                        )
-                        
-                        if compile_result.returncode != 0:
-                            return f"❌ Error de compilación:\n{compile_result.stdout}", compile_result.returncode
-                        
-                        exec_command = ['wsl', 'bash', '-c', f'cd "{wsl_dir}" && "./{base_name}_test" 2>&1']
-                        exec_result = subprocess.run(
-                            exec_command,
-                            capture_output=True,
-                            text=True,
-                            timeout=30,
-                            encoding='utf-8',
-                            errors='replace'
-                        )
-                        
-                        output = f"🔧 Compilación: gcc -no-pie -m64 {os.path.basename(wsl_path)} -o {base_name}_test\n"
-                        output += f"✅ Compilación exitosa\n\n"
-                        output += f"🚀 Ejecutando test {test_number}\n"
-                        output += "="*40 + "\n"
-                        
-                        if exec_result.stdout:
-                            output += exec_result.stdout
-                        else:
-                            output += "(sin salida)\n"
-                        
-                        output += "\n" + "="*40 + "\n"
-                        
-                        if exec_result.returncode == 0:
-                            output += "✅ Ejecución exitosa"
-                        else:
-                            output += f"❌ Código de salida: {exec_result.returncode}"
-                        
-                        try:
-                            subprocess.run(['wsl', 'rm', f'{wsl_dir}/{base_name}_test'], capture_output=True, timeout=5)
-                        except:
-                            pass
-                        
-                        return output, exec_result.returncode
-                        
-                    except subprocess.TimeoutExpired:
-                        return "❌ Timeout (30s) - Programa muy lento o bucle infinito", 1
-                    except Exception as e:
-                        return f"❌ Error: {str(e)}", 1
-                
-                result, returncode = execute_assembly_local(s_file)
-                
-                with st.expander(f"Resultado de Ejecución del Test {test_number}", expanded=True):
-                    st.code(result, language="text")
-        else:
-            st.error(f"❌ No se encontró el archivo test{test_number}.s")
     
     st.markdown("---")
     
