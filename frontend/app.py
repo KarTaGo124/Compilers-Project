@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import re
+import platform
 
 try:
     from streamlit_ace import st_ace
@@ -312,8 +313,15 @@ def show_syntax_guide():
 
 def load_test_file(test_number):
     """Carga un archivo de test específico por número"""
-    test_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test")
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    test_dir = os.path.join(project_dir, "test")
     txt_file = os.path.join(test_dir, f"test{test_number}.txt")
+    
+    # También buscar en el directorio actual (para deployments)
+    if not os.path.exists(txt_file):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        alt_test_dir = os.path.join(current_dir, "test")
+        txt_file = os.path.join(alt_test_dir, f"test{test_number}.txt")
     
     if os.path.exists(txt_file):
         try:
@@ -322,7 +330,7 @@ def load_test_file(test_number):
         except Exception as e:
             return f"// Error al cargar el archivo test{test_number}.txt: {str(e)}"
     else:
-        return f"// No se encontró el archivo test{test_number}.txt"
+        return f"// No se encontró el archivo test{test_number}.txt\n// Buscado en: {txt_file}"
 
 def read_assembly_file(file_path):
     """Lee el archivo .s generado por el compilador"""
@@ -485,6 +493,33 @@ with col2:
         
         return sections
 
+    def get_compiler_path():
+        """Detecta el sistema operativo y retorna la ruta del compilador apropiado"""
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        # Detectar sistema operativo
+        system = platform.system().lower()
+        
+        if system == "windows":
+            compiler_name = "main.exe"
+        elif system in ["linux", "darwin"]:
+            compiler_name = "main"
+        else:
+            compiler_name = "main"  # Default para otros sistemas Unix-like
+        
+        compiler_path = os.path.join(project_dir, compiler_name)
+        
+        # Si no existe el ejecutable específico para el sistema, buscar alternativas
+        if not os.path.exists(compiler_path):
+            possible_names = ["main", "main.exe", "kotlin_compiler", "compiler"]
+            for name in possible_names:
+                alternative_path = os.path.join(project_dir, name)
+                if os.path.exists(alternative_path):
+                    compiler_path = alternative_path
+                    break
+        
+        return compiler_path, compiler_name
+
     def run_compiler(code):
         try:
             project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -498,10 +533,26 @@ with col2:
             with open(editor_file, 'w', encoding='utf-8') as f:
                 f.write(code)
             
-            compiler_path = os.path.join(project_dir, "main.exe")
+            compiler_path, compiler_name = get_compiler_path()
             
             if not os.path.exists(compiler_path):
-                return "", "❌ Error: No se encontró el compilador main.exe en la carpeta raíz del proyecto", 1, ""
+                system_info = platform.system()
+                error_msg = f"❌ Error: No se encontró el compilador para {system_info}.\n\n"
+                error_msg += f"Buscando: {compiler_name}\n"
+                error_msg += f"Directorio: {project_dir}\n\n"
+                error_msg += "💡 Soluciones:\n"
+                error_msg += "  • Asegúrate de que el ejecutable esté en la carpeta raíz\n"
+                error_msg += "  • Para Linux: compila con 'g++ -o main *.cpp'\n"
+                error_msg += "  • Para Windows: usa 'main.exe'\n"
+                error_msg += f"  • Sistema detectado: {system_info}"
+                return "", error_msg, 1, ""
+            
+            # Dar permisos de ejecución en sistemas Unix
+            if platform.system().lower() in ["linux", "darwin"]:
+                try:
+                    os.chmod(compiler_path, 0o755)
+                except Exception as e:
+                    st.warning(f"⚠️ No se pudieron establecer permisos de ejecución: {e}")
             
             result = subprocess.run(
                 [compiler_path, editor_file],
@@ -518,6 +569,13 @@ with col2:
         
         except subprocess.TimeoutExpired:
             return "", "❌ Error: El programa tardó demasiado en ejecutarse (timeout de 30s)", 1, ""
+        except PermissionError as e:
+            error_msg = f"❌ Error de permisos: {str(e)}\n\n"
+            error_msg += "💡 Soluciones:\n"
+            error_msg += "  • El archivo no tiene permisos de ejecución\n"
+            error_msg += "  • En sistemas Unix: ejecuta 'chmod +x main'\n"
+            error_msg += f"  • Sistema: {platform.system()}"
+            return "", error_msg, 1, ""
         except Exception as e:
             return "", f"❌ Error al ejecutar el compilador: {str(e)}", 1, ""
 
