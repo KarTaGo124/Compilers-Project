@@ -164,11 +164,11 @@ private:
     std::unordered_map<string, int> memoria;
     std::unordered_map<string, int> variableTypes;
     std::unordered_map<double, string> floatConstants;
-    std::unordered_map<string, string> functionReturnTypes; // Para almacenar tipos de retorno de funciones
+    std::unordered_map<string, string> functionReturnTypes;
     std::stack<string> labelStack;
     int offset;
     int labelcont;
-    int stringBufferCounter; // Para manejar múltiples concatenaciones
+    int stringBufferCounter;
     bool entornoFuncion;
     string nombreFuncion;
 
